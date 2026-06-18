@@ -10,12 +10,22 @@ body,
 }
 
 body {
-  /* Transparent so the native vibrancy / acrylic shows through. */
+  /* Transparent so the CSS glass panel (and its rounded corners) is the only
+     visible surface. */
   background: transparent;
   overflow: hidden;
   -webkit-user-select: none;
   user-select: none;
   cursor: default;
+}
+
+/* Frameless-window dragging: the title-bar-like header drags the window,
+   while interactive controls inside it opt back out. */
+.drag-region {
+  -webkit-app-region: drag;
+}
+.no-drag {
+  -webkit-app-region: no-drag;
 }
 
 /* Slim, subtle scrollbar for the history list. */

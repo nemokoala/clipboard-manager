@@ -25,6 +25,9 @@ process.env.APP_ROOT = path.join(__dirname, '..')
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL
 const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 
+// 개발 모드 여부(Vite 개발 서버 URL 이 있으면 dev)
+const IS_DEV = !!VITE_DEV_SERVER_URL
+
 let win: BrowserWindow | null = null
 let settingsWin: BrowserWindow | null = null
 
@@ -40,11 +43,13 @@ function createWindow(): void {
     alwaysOnTop: true,
     skipTaskbar: true,
     show: false,
-    transparent: process.platform === 'darwin',
-    // Glass / blur effects per platform.
+    // Transparent on both platforms so the CSS `rounded-2xl` corners are the
+    // actual window shape (a native acrylic layer is rectangular and can't
+    // follow the rounded corners, which made the radius look off on Windows).
+    transparent: true,
     vibrancy: process.platform === 'darwin' ? 'under-window' : undefined,
-    backgroundMaterial: process.platform === 'win32' ? 'acrylic' : undefined,
-    backgroundColor: process.platform === 'win32' ? '#00000000' : undefined,
+    backgroundColor: '#00000000',
+    hasShadow: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -64,8 +69,10 @@ function createWindow(): void {
     showWindow()
   })
 
-  // Auto-hide when the overlay loses focus.
+  // 포커스를 잃으면 오버레이를 자동으로 숨긴다.
   win.on('blur', () => {
+    // 개발 모드에서는 에디터/DevTools 로 포커스가 이동해도 창을 숨기지 않는다.
+    if (IS_DEV) return
     if (win && !win.webContents.isDevToolsOpened()) {
       win.hide()
     }

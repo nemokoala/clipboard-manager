@@ -7,7 +7,7 @@ interface SearchBarProps {
 
 export default function SearchBar({ value, onChange, onClose, onSettings }: SearchBarProps) {
   return (
-    <div className="flex items-center gap-2 px-4 py-3">
+    <div className="drag-region flex items-center gap-2 px-4 py-3">
       <svg
         className="h-4 w-4 shrink-0 text-white/40"
         viewBox="0 0 24 24"
@@ -27,13 +27,13 @@ export default function SearchBar({ value, onChange, onClose, onSettings }: Sear
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Search..."
-        className="flex-1 bg-transparent text-sm text-white/90 placeholder:text-white/40 focus:outline-none"
+        className="no-drag flex-1 bg-transparent text-sm text-white/90 placeholder:text-white/40 focus:outline-none"
       />
 
       <button
         onClick={onSettings}
         title="설정"
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-white/50 transition hover:bg-white/10 hover:text-white/90"
+        className="no-drag flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-white/50 transition hover:bg-white/10 hover:text-white/90"
       >
         <svg
           className="h-4 w-4"
@@ -52,7 +52,7 @@ export default function SearchBar({ value, onChange, onClose, onSettings }: Sear
       <button
         onClick={onClose}
         title="닫기"
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-white/50 transition hover:bg-white/10 hover:text-white/90"
+        className="no-drag flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-white/50 transition hover:bg-white/10 hover:text-white/90"
       >
         <svg
           className="h-4 w-4"
