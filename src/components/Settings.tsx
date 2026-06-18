@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react'
 
 const IS_MAC = navigator.userAgent.includes('Mac')
 
-/** Map a KeyboardEvent.code to the key portion of an Electron accelerator. */
+/** KeyboardEvent.code를 Electron accelerator의 키 부분으로 변환한다. */
 function codeToKey(code: string): string | null {
   let m: RegExpExecArray | null
   if ((m = /^Key([A-Z])$/.exec(code))) return m[1]
   if ((m = /^Digit(\d)$/.exec(code))) return m[1]
-  if (/^F([1-9]|1[0-9]|2[0-4])$/.test(code)) return code // F1–F24
+  if (/^F([1-9]|1[0-9]|2[0-4])$/.test(code)) return code // F1~F24
   const map: Record<string, string> = {
     ArrowUp: 'Up',
     ArrowDown: 'Down',
@@ -37,7 +37,7 @@ function codeToKey(code: string): string | null {
   return map[code] ?? null
 }
 
-/** Build an Electron accelerator from a keydown event, or null if invalid. */
+/** keydown 이벤트에서 Electron accelerator를 만들거나, 유효하지 않으면 null. */
 function eventToAccelerator(e: React.KeyboardEvent): string | null {
   const parts: string[] = []
   if (e.ctrlKey || e.metaKey) parts.push('CommandOrControl')
@@ -46,14 +46,14 @@ function eventToAccelerator(e: React.KeyboardEvent): string | null {
 
   const key = codeToKey(e.nativeEvent.code)
   if (!key) return null
-  // Require at least one modifier — bare keys make poor global shortcuts.
+  // 보조키 최소 1개 필요 — 단독 키는 전역 단축키로 부적합.
   if (parts.length === 0) return null
 
   parts.push(key)
   return parts.join('+')
 }
 
-/** Pretty-print an accelerator for display (Ctrl/⌘, etc.). */
+/** accelerator를 표시용으로 예쁘게 포맷한다 (Ctrl/⌘ 등). */
 function prettyAccelerator(accelerator: string): string {
   return accelerator
     .split('+')
@@ -82,13 +82,13 @@ export default function Settings() {
     })
   }, [])
 
-  /** Enter/leave recording mode, telling main to suspend the global shortcut. */
+  /** 녹화 모드 진입/종료 — main에 전역 단축키 일시 중단을 알린다. */
   const setRecordingMode = (active: boolean) => {
     setRecording(active)
     window.clipboardAPI.setRecording(active)
   }
 
-  // Make sure the global shortcut is restored if the window closes mid-record.
+  // 녹화 중 창이 닫히면 전역 단축키가 복원되도록 한다.
   useEffect(() => {
     return () => {
       window.clipboardAPI.setRecording(false)
@@ -100,7 +100,7 @@ export default function Settings() {
     e.preventDefault()
     e.stopPropagation()
 
-    // Escape cancels recording without changing the draft.
+    // Escape는 draft 변경 없이 녹화 취소.
     if (e.nativeEvent.code === 'Escape') {
       setRecordingMode(false)
       return

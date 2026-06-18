@@ -1,6 +1,6 @@
 import type { ClipboardItem } from '../types'
 
-/** Format an ISO timestamp as HH:mm (24h). */
+/** ISO 타임스탬프를 HH:mm(24시간) 형식으로 포맷한다. */
 export function formatTime(iso: string): string {
   const d = new Date(iso)
   const hh = String(d.getHours()).padStart(2, '0')
@@ -10,13 +10,13 @@ export function formatTime(iso: string): string {
 
 const WEEKDAYS_KO = ['일', '월', '화', '수', '목', '금', '토']
 
-/** Strip a date down to midnight for day-level comparisons. */
+/** 날짜를 자정으로 맞춰 일 단위 비교에 사용한다. */
 function startOfDay(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
 }
 
 /**
- * Human label for a day group: "오늘", "어제", or "6월 17일 (화)".
+ * 일 그룹용 라벨: "오늘", "어제", 또는 "6월 17일 (화)".
  */
 export function formatDateGroupLabel(iso: string): string {
   const date = new Date(iso)
@@ -33,7 +33,7 @@ export function formatDateGroupLabel(iso: string): string {
   return `${month}월 ${day}일 (${weekday})`
 }
 
-/** A stable per-day key (YYYY-MM-DD in local time) used for grouping. */
+/** 그룹핑용 안정적인 일별 키 (로컬 시간 YYYY-MM-DD). */
 export function dayKey(iso: string): string {
   const d = new Date(iso)
   const y = d.getFullYear()
@@ -48,7 +48,7 @@ export interface DayGroup {
   items: ClipboardItem[]
 }
 
-/** Group items (already newest-first) into ordered day buckets. */
+/** 항목(이미 최신순)을 순서 있는 일별 버킷으로 그룹한다. */
 export function groupByDay(items: ClipboardItem[]): DayGroup[] {
   const groups: DayGroup[] = []
   const index = new Map<string, DayGroup>()
@@ -71,7 +71,7 @@ export function groupByDay(items: ClipboardItem[]): DayGroup[] {
   return groups
 }
 
-/** Format a byte count as MB with one decimal, e.g. "2.4MB". */
+/** 바이트 수를 소수점 1자리 MB로 포맷한다, 예: "2.4MB". */
 export function formatMB(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
 }

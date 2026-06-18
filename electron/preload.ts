@@ -16,7 +16,7 @@ const clipboardAPI = {
   copyToClipboard: (content: string): Promise<void> =>
     ipcRenderer.invoke('clipboard:copy', content),
 
-  /** Hide the overlay window (used after copying an item). */
+  /** 오버레이 창 숨기기 (항목 복사 후 사용). */
   hideWindow: (): Promise<void> => ipcRenderer.invoke('window:hide'),
 
   onNewItem: (callback: (item: ClipboardItem) => void): void => {
@@ -27,7 +27,7 @@ const clipboardAPI = {
     ipcRenderer.removeAllListeners('clipboard:new')
   },
 
-  /** Fired when the tray's "전체 삭제" clears the store. */
+  /** 트레이 "전체 삭제"로 저장소가 비워질 때 발생. */
   onCleared: (callback: () => void): void => {
     ipcRenderer.on('clipboard:cleared', () => callback())
   },
@@ -36,7 +36,7 @@ const clipboardAPI = {
     ipcRenderer.removeAllListeners('clipboard:cleared')
   },
 
-  // --- Settings ---
+  // --- 설정 ---
   getSettings: (): Promise<SettingsData> => ipcRenderer.invoke('settings:get'),
 
   setShortcut: (accelerator: string): Promise<SetShortcutResult> =>
@@ -44,11 +44,11 @@ const clipboardAPI = {
 
   openSettings: (): Promise<void> => ipcRenderer.invoke('settings:open'),
 
-  /** Suspend/restore the global shortcut while recording a new combo. */
+  /** 새 조합 녹화 중 전역 단축키 일시 중단/복원. */
   setRecording: (recording: boolean): Promise<void> =>
     ipcRenderer.invoke('settings:setRecording', recording),
 
-  /** Close the window that owns this renderer (used by the settings window). */
+  /** 이 렌더러를 소유한 창 닫기 (설정 창용). */
   closeSelf: (): Promise<void> => ipcRenderer.invoke('settings:closeSelf'),
 }
 

@@ -10,8 +10,7 @@ body,
 }
 
 body {
-  /* Transparent so the CSS glass panel (and its rounded corners) is the only
-     visible surface. */
+  /* CSS 글래스 패널(둥근 모서리)만 보이도록 배경을 투명하게. */
   background: transparent;
   overflow: hidden;
   -webkit-user-select: none;
@@ -19,8 +18,8 @@ body {
   cursor: default;
 }
 
-/* Frameless-window dragging: the title-bar-like header drags the window,
-   while interactive controls inside it opt back out. */
+/* frameless 창 드래그: 타이틀바처럼 동작하는 헤더가 창을 이동하고,
+   내부 컨트롤은 드래그에서 제외한다. */
 .drag-region {
   -webkit-app-region: drag;
 }
@@ -28,7 +27,7 @@ body {
   -webkit-app-region: no-drag;
 }
 
-/* Slim, subtle scrollbar for the history list. */
+/* 히스토리 목록용 얇고 은은한 스크롤바. */
 *::-webkit-scrollbar {
   width: 8px;
 }

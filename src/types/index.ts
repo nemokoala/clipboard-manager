@@ -3,32 +3,32 @@ export type ClipboardType = 'text' | 'image' | 'link'
 export interface ClipboardItem {
   id: number
   type: ClipboardType
-  /** Plain text, a URL, or a `data:image/png;base64,...` string. */
+  /** 일반 텍스트, URL, 또는 `data:image/png;base64,...` 문자열. */
   content: string
-  /** Byte size of `content`. */
+  /** `content`의 바이트 크기. */
   size: number
-  /** ISO8601 timestamp, e.g. 2025-06-19T14:30:00.000Z */
+  /** ISO8601 타임스탬프, 예: 2025-06-19T14:30:00.000Z */
   created_at: string
 }
 
-/** Tab filter values used by the UI. */
+/** UI에서 쓰는 탭 필터 값. */
 export type TabFilter = 'all' | 'text' | 'image' | 'link'
 
-/** Settings payload returned by the main process. */
+/** 메인 프로세스가 반환하는 설정 데이터. */
 export interface SettingsData {
-  /** Currently saved global toggle shortcut (Electron accelerator string). */
+  /** 현재 저장된 전역 토글 단축키 (Electron accelerator 문자열). */
   shortcut: string
-  /** The built-in default, for the "기본값으로" button. */
+  /** "기본값으로" 버튼용 내장 기본값. */
   defaultShortcut: string
 }
 
-/** Result of attempting to change the shortcut. */
+/** 단축키 변경 시도 결과. */
 export interface SetShortcutResult {
   ok: boolean
   error?: string
 }
 
-/** Shape of the API exposed on `window.clipboardAPI` by the preload script. */
+/** preload가 `window.clipboardAPI`에 노출하는 API 형태. */
 export interface ClipboardAPI {
   getItems: () => Promise<ClipboardItem[]>
   searchItems: (query: string) => Promise<ClipboardItem[]>
@@ -41,7 +41,7 @@ export interface ClipboardAPI {
   removeNewItemListener: () => void
   onCleared: (callback: () => void) => void
   removeClearedListener: () => void
-  // Settings
+  // 설정
   getSettings: () => Promise<SettingsData>
   setShortcut: (accelerator: string) => Promise<SetShortcutResult>
   openSettings: () => Promise<void>

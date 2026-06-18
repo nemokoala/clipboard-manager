@@ -23,20 +23,20 @@ export default function App() {
     setItems(data)
   }, [query])
 
-  // Initial load + reload whenever the search query changes.
+  // 초기 로드 + 검색어 변경 시마다 다시 로드.
   useEffect(() => {
     loadItems()
     refreshSize()
   }, [loadItems, refreshSize])
 
-  // Live updates pushed from the main process.
+  // 메인 프로세스에서 push하는 실시간 갱신.
   useEffect(() => {
     window.clipboardAPI.onNewItem(() => {
-      // Re-run the current query/filter so the new item lands correctly.
+      // 현재 쿼리/필터를 다시 실행해 새 항목이 올바르게 반영되게 한다.
       loadItems()
       refreshSize()
     })
-    // Tray "전체 삭제" cleared the store — refresh to empty.
+    // 트레이 "전체 삭제"로 저장소 비움 — 빈 목록으로 갱신.
     window.clipboardAPI.onCleared(() => {
       loadItems()
       refreshSize()
@@ -69,13 +69,13 @@ export default function App() {
     window.clipboardAPI.openSettings()
   }, [])
 
-  // Filter the loaded items by the active tab.
+  // 활성 탭으로 로드된 항목 필터.
   const visibleItems = useMemo(() => {
     if (tab === 'all') return items
     return items.filter((item) => item.type === tab)
   }, [items, tab])
 
-  // Close on Escape.
+  // Escape로 닫기.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') window.clipboardAPI.hideWindow()

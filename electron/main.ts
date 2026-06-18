@@ -16,10 +16,9 @@ import {
 import { createTray, destroyTray, broadcastCleared } from './tray'
 import { getShortcut, setStoredShortcut, DEFAULT_SHORTCUT } from './settings'
 
-// dist-electron/  ← compiled main + preload live here (CommonJS, so __dirname
-// is available natively).
-// dist/           ← compiled renderer
-// The project root is one level up from dist-electron.
+// dist-electron/  ← 컴파일된 main + preload (CommonJS, __dirname 사용 가능)
+// dist/           ← 컴파일된 렌더러
+// 프로젝트 루트는 dist-electron 의 한 단계 위.
 process.env.APP_ROOT = path.join(__dirname, '..')
 
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL
@@ -31,7 +30,7 @@ const IS_DEV = !!VITE_DEV_SERVER_URL
 let win: BrowserWindow | null = null
 let settingsWin: BrowserWindow | null = null
 
-/** The accelerator currently registered with the OS (so we can replace it). */
+/** OS에 현재 등록된 accelerator (교체 시 참조). */
 let activeShortcut = ''
 
 function createWindow(): void {
@@ -43,9 +42,8 @@ function createWindow(): void {
     alwaysOnTop: true,
     skipTaskbar: true,
     show: false,
-    // Transparent on both platforms so the CSS `rounded-2xl` corners are the
-    // actual window shape (a native acrylic layer is rectangular and can't
-    // follow the rounded corners, which made the radius look off on Windows).
+    // 양 플랫폼 모두 투명 처리: CSS `rounded-2xl` 모서리가 실제 창 형태가 됨
+    // (네이티브 아크릴 레이어는 사각형이라 둥근 모서리를 따라갈 수 없어 Windows에서 radius가 어색했음).
     transparent: true,
     vibrancy: process.platform === 'darwin' ? 'under-window' : undefined,
     backgroundColor: '#00000000',
@@ -63,8 +61,8 @@ function createWindow(): void {
     win.loadFile(path.join(RENDERER_DIST, 'index.html'))
   }
 
-  // Show the overlay once on first launch so it's not a mystery that the app
-  // is running. (`show: false` avoids a white flash before the UI is painted.)
+  // 첫 실행 시 오버레이를 한 번 표시해 앱이 실행 중임을 알린다.
+  // (`show: false`는 UI 페인트 전 흰 화면 깜빡임을 방지한다.)
   win.once('ready-to-show', () => {
     showWindow()
   })
@@ -79,7 +77,7 @@ function createWindow(): void {
   })
 }
 
-/** Toggle the overlay, positioning it near the cursor / screen centre. */
+/** 오버레이를 토글하고 커서/화면 중앙 근처에 배치한다. */
 function toggleWindow(): void {
   if (!win) return
   if (win.isVisible()) {
@@ -98,7 +96,7 @@ function showWindow(): void {
   win.focus()
 }
 
-/** Centre the window horizontally on the display under the cursor. */
+/** 커서 아래 디스플레이 기준으로 창을 가로 중앙에 배치한다. */
 function positionWindow(): void {
   if (!win) return
   const cursor = screen.getCursorScreenPoint()
@@ -112,9 +110,8 @@ function positionWindow(): void {
 }
 
 /**
- * Register `accelerator` as the global toggle shortcut, replacing whatever was
- * registered before. Returns false if the OS rejects it (e.g. already taken by
- * another app), leaving no shortcut registered for the caller to handle.
+ * `accelerator`를 전역 토글 단축키로 등록하고 이전 등록분을 교체한다.
+ * OS가 거부하면 false (다른 앱이 사용 중 등) — 호출자가 처리해야 한다.
  */
 function applyShortcut(accelerator: string): boolean {
   if (activeShortcut) {
@@ -128,12 +125,12 @@ function applyShortcut(accelerator: string): boolean {
       return true
     }
   } catch {
-    /* fall through to false */
+    /* false 반환 */
   }
   return false
 }
 
-/** Open (or focus) the settings window. */
+/** 설정 창을 연다(또는 포커스한다). */
 function openSettingsWindow(): void {
   if (settingsWin) {
     settingsWin.show()
@@ -157,10 +154,10 @@ function openSettingsWindow(): void {
     },
   })
 
-  // Drop the default File/Edit/View… menu bar — this is a simple settings dialog.
+  // 기본 File/Edit/View… 메뉴바 제거 — 단순 설정 대화상자.
   settingsWin.removeMenu()
 
-  // The renderer decides what to render based on the URL hash.
+  // 렌더러가 URL 해시에 따라 렌더링 내용을 결정한다.
   if (VITE_DEV_SERVER_URL) {
     settingsWin.loadURL(`${VITE_DEV_SERVER_URL}#settings`)
   } else {
@@ -169,8 +166,7 @@ function openSettingsWindow(): void {
 
   settingsWin.on('closed', () => {
     settingsWin = null
-    // Safety net: if the window was closed mid-recording, the shortcut may be
-    // unregistered — restore the saved one.
+    // 안전장치: 녹화 중 창이 닫히면 단축키가 해제됐을 수 있음 — 저장된 것을 복원.
     if (!activeShortcut) applyShortcut(getShortcut())
   })
 }
@@ -184,7 +180,7 @@ function registerIpc(): void {
   ipcMain.handle('clipboard:copy', (_e, content: string) => writeToClipboard(content))
   ipcMain.handle('window:hide', () => win?.hide())
 
-  // --- Settings ---
+  // --- 설정 ---
   ipcMain.handle('settings:get', () => ({
     shortcut: getShortcut(),
     defaultShortcut: DEFAULT_SHORTCUT,
@@ -196,7 +192,7 @@ function registerIpc(): void {
       setStoredShortcut(accelerator)
       return { ok: true }
     }
-    // Registration failed — restore the previously saved shortcut.
+    // 등록 실패 — 이전에 저장된 단축키 복원.
     applyShortcut(getShortcut())
     return { ok: false, error: '이 단축키를 등록할 수 없습니다 (다른 앱이 사용 중일 수 있어요).' }
   })
@@ -206,8 +202,8 @@ function registerIpc(): void {
     BrowserWindow.fromWebContents(e.sender)?.close(),
   )
 
-  // While the user is recording a new combo, suspend the global shortcut so it
-  // (a) doesn't trigger the overlay and (b) reaches the renderer to be captured.
+  // 새 조합 녹화 중 전역 단축키를 일시 중단한다:
+  // (a) 오버레이가 뜨지 않게 하고 (b) 렌더러까지 입력이 전달되게 한다.
   ipcMain.handle('settings:setRecording', (_e, recording: boolean) => {
     if (recording) {
       globalShortcut.unregisterAll()
@@ -229,24 +225,24 @@ app.whenReady().then(() => {
     onCleared: () => broadcastCleared(),
   })
 
-  // Live updates: push every captured item to the renderer.
+  // 실시간 갱신: 캡처된 항목을 렌더러로 push.
   startClipboardWatcher((item) => {
     win?.webContents.send('clipboard:new', item)
   })
 
-  // Register the user's saved shortcut (defaults to Ctrl/Cmd+Shift+V).
+  // 사용자 저장 단축키 등록 (기본 Ctrl/Cmd+Shift+V).
   const registered = applyShortcut(getShortcut())
   if (!registered) {
     console.warn(`[main] failed to register global shortcut "${getShortcut()}"`)
   }
 
-  // macOS: hide the dock icon — this is a tray/overlay utility.
+  // macOS: 독 아이콘 숨김 — 트레이/오버레이 유틸리티.
   if (process.platform === 'darwin') {
     app.dock?.hide()
   }
 })
 
-// Keep running in the tray even when all windows are closed.
+// 모든 창이 닫혀도 트레이에서 계속 실행.
 app.on('window-all-closed', (e: Electron.Event) => {
   e.preventDefault()
 })

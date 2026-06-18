@@ -1,13 +1,13 @@
 import { formatMB } from '../utils/format'
 
 interface StorageBarProps {
-  /** Current usage in bytes. */
+  /** 현재 사용량(바이트). */
   usedBytes: number
-  /** Capacity in bytes (defaults to 50MB). */
+  /** 용량(바이트, 기본 50MB). */
   maxBytes?: number
 }
 
-const DEFAULT_MAX = 50 * 1024 * 1024 // 50MB
+const DEFAULT_MAX = 50 * 1024 * 1024 // 50MB 기본값
 
 export default function StorageBar({ usedBytes, maxBytes = DEFAULT_MAX }: StorageBarProps) {
   const ratio = Math.min(usedBytes / maxBytes, 1)

@@ -9,7 +9,7 @@ interface HistoryItemProps {
 
 export default function HistoryItem({ item, onCopy, onDelete }: HistoryItemProps) {
   const handleDelete = (e: React.MouseEvent) => {
-    // Don't trigger the copy-on-click of the parent card.
+    // 부모 카드의 클릭-복사가 실행되지 않도록 한다.
     e.stopPropagation()
     onDelete(item.id)
   }
@@ -19,7 +19,7 @@ export default function HistoryItem({ item, onCopy, onDelete }: HistoryItemProps
       onClick={() => onCopy(item)}
       className="group relative cursor-pointer rounded-xl bg-white/5 p-3 transition hover:bg-white/10"
     >
-      {/* Content preview */}
+      {/* 내용 미리보기 */}
       {item.type === 'image' ? (
         <img
           src={item.content}
@@ -48,10 +48,10 @@ export default function HistoryItem({ item, onCopy, onDelete }: HistoryItemProps
         </p>
       )}
 
-      {/* Footer: timestamp */}
+      {/* 하단: 시간 */}
       <div className="mt-2 text-[11px] text-white/40">{formatTime(item.created_at)}</div>
 
-      {/* Delete button — revealed on hover */}
+      {/* 삭제 버튼 — hover 시 표시 */}
       <button
         onClick={handleDelete}
         title="삭제"

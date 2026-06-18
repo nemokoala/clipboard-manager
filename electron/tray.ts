@@ -5,15 +5,15 @@ import { deleteAll } from './db'
 let tray: Tray | null = null
 
 interface TrayCallbacks {
-  /** Show / focus the overlay window. */
+  /** 오버레이 창 표시/포커스. */
   onOpen: () => void
-  /** Open the settings window. */
+  /** 설정 창 열기. */
   onSettings: () => void
-  /** Notify the renderer that all items were cleared. */
+  /** 렌더러에 전체 삭제 알림. */
   onCleared: () => void
 }
 
-/** A tiny fallback icon so the tray still works before assets/icon exists. */
+/** assets/icon 없을 때 트레이가 동작하도록 하는 작은 대체 아이콘. */
 function loadTrayIcon(): Electron.NativeImage {
   const iconName = process.platform === 'win32' ? 'icon.ico' : 'iconTemplate.png'
   const iconPath = path.join(process.env.APP_ROOT ?? app.getAppPath(), 'assets', iconName)
@@ -22,7 +22,7 @@ function loadTrayIcon(): Electron.NativeImage {
     if (process.platform === 'darwin') img.setTemplateImage(true)
     return img
   }
-  // 1x1 transparent placeholder keeps Tray construction from throwing.
+  // 1x1 투명 placeholder로 Tray 생성 예외를 방지한다.
   return nativeImage.createFromDataURL(
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
   )
@@ -59,7 +59,7 @@ export function createTray({ onOpen, onSettings, onCleared }: TrayCallbacks): Tr
 
   tray.setContextMenu(menu)
 
-  // Left-click also opens the window (handy on Windows).
+  // 왼쪽 클릭으로도 창 열기 (Windows에서 편리).
   tray.on('click', () => onOpen())
 
   return tray
@@ -70,7 +70,7 @@ export function destroyTray(): void {
   tray = null
 }
 
-/** Convenience for broadcasting the "cleared" event to all windows. */
+/** "cleared" 이벤트를 모든 창에 브로드캐스트하는 편의 함수. */
 export function broadcastCleared(): void {
   BrowserWindow.getAllWindows().forEach((w) => w.webContents.send('clipboard:cleared'))
 }
