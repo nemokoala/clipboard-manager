@@ -1,0 +1,21 @@
+appId: com.yourname.clipboardmanager
+productName: ClipBoard
+directories:
+  output: dist-release
+  buildResources: assets
+files:
+  - dist
+  - dist-electron
+asarUnpack:
+  - "**/node_modules/better-sqlite3/**"
+mac:
+  target: dmg
+  category: public.app-category.productivity
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+win:
+  target: nsis
+  icon: assets/icon.ico
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
