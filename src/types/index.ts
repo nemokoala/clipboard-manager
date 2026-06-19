@@ -51,6 +51,8 @@ export interface ClipboardAPI {
   removeNewItemListener: () => void
   onCleared: (callback: () => void) => void
   removeClearedListener: () => void
+  onToast: (callback: (message: string) => void) => void
+  removeToastListener: () => void
   // 설정
   getSettings: () => Promise<SettingsData>
   setShortcut: (accelerator: string) => Promise<SetShortcutResult>

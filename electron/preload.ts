@@ -41,6 +41,14 @@ const clipboardAPI = {
     ipcRenderer.removeAllListeners('clipboard:cleared')
   },
 
+  onToast: (callback: (message: string) => void): void => {
+    ipcRenderer.on('toast:show', (_event, message: string) => callback(message))
+  },
+
+  removeToastListener: (): void => {
+    ipcRenderer.removeAllListeners('toast:show')
+  },
+
   // --- 설정 ---
   getSettings: (): Promise<SettingsData> => ipcRenderer.invoke('settings:get'),
 

@@ -46,9 +46,16 @@ const IS_DEV = !!VITE_DEV_SERVER_URL
 
 let win: BrowserWindow | null = null
 let settingsWin: BrowserWindow | null = null
+let toastWin: BrowserWindow | null = null
+let toastReady = false
+let pendingToastMessage: string | null = null
+let toastHideTimer: ReturnType<typeof setTimeout> | null = null
 
 /** OS에 현재 등록된 accelerator (교체 시 참조). */
 let activeShortcut = ''
+const TOAST_WIDTH = 320
+const TOAST_HEIGHT = 56
+const TOAST_DURATION_MS = 1400
 
 function createWindow(): void {
   const { width, height } = getMainWindowSize()
@@ -124,6 +131,81 @@ function showWindow(): void {
   positionWindow()
   win.show()
   win.focus()
+}
+
+function createToastWindow(): void {
+  toastWin = new BrowserWindow({
+    width: TOAST_WIDTH,
+    height: TOAST_HEIGHT,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: false,
+    focusable: false,
+    skipTaskbar: true,
+    show: false,
+    alwaysOnTop: true,
+    hasShadow: false,
+    backgroundColor: '#00000000',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  })
+
+  toastWin.setIgnoreMouseEvents(true)
+
+  toastWin.webContents.on('did-finish-load', () => {
+    toastReady = true
+    if (pendingToastMessage) {
+      const message = pendingToastMessage
+      pendingToastMessage = null
+      showToast(message)
+    }
+  })
+
+  toastWin.on('closed', () => {
+    toastWin = null
+    toastReady = false
+  })
+
+  if (VITE_DEV_SERVER_URL) {
+    toastWin.loadURL(`${VITE_DEV_SERVER_URL}#toast`)
+  } else {
+    toastWin.loadFile(path.join(RENDERER_DIST, 'index.html'), { hash: 'toast' })
+  }
+}
+
+function showToast(message: string): void {
+  if (!toastWin) {
+    pendingToastMessage = message
+    createToastWindow()
+    return
+  }
+
+  if (!toastReady) {
+    pendingToastMessage = message
+    return
+  }
+
+  const cursor = screen.getCursorScreenPoint()
+  const display = screen.getDisplayNearestPoint(cursor)
+  const { width, height, x, y } = display.workArea
+
+  toastWin.setPosition(
+    Math.round(x + (width - TOAST_WIDTH) / 2),
+    Math.round(y + height - TOAST_HEIGHT - 32),
+  )
+  toastWin.webContents.send('toast:show', message)
+  toastWin.showInactive()
+  toastWin.moveTop()
+
+  if (toastHideTimer) clearTimeout(toastHideTimer)
+  toastHideTimer = setTimeout(() => {
+    toastWin?.hide()
+    toastHideTimer = null
+  }, TOAST_DURATION_MS)
 }
 
 /** 커서 아래 디스플레이 기준으로 창을 가로 중앙에 배치한다. */
@@ -211,7 +293,10 @@ function registerIpc(): void {
   ipcMain.handle('db:delete', (_e, id: number) => deleteItem(id))
   ipcMain.handle('db:deleteAll', () => deleteAll())
   ipcMain.handle('db:totalSize', () => getTotalSize())
-  ipcMain.handle('clipboard:copy', (_e, content: string) => writeToClipboard(content))
+  ipcMain.handle('clipboard:copy', (_e, content: string) => {
+    writeToClipboard(content)
+    showToast('복사되었습니다.')
+  })
   ipcMain.handle('window:hide', () => win?.hide())
 
   // --- 설정 ---
@@ -262,6 +347,7 @@ app.whenReady().then(() => {
   initDb()
   registerIpc()
   createWindow()
+  createToastWindow()
 
   createTray({
     onOpen: showWindow,
@@ -272,6 +358,7 @@ app.whenReady().then(() => {
   // 실시간 갱신: 캡처된 항목을 렌더러로 push.
   startClipboardWatcher((item) => {
     win?.webContents.send('clipboard:new', item)
+    showToast('클립보드에 저장되었습니다.')
   })
 
   // 사용자 저장 단축키 등록 (기본 Ctrl/Cmd+Shift+V).
@@ -294,5 +381,6 @@ app.on('window-all-closed', (e: Electron.Event) => {
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()
   stopClipboardWatcher()
+  if (toastHideTimer) clearTimeout(toastHideTimer)
   destroyTray()
 })
