@@ -14,7 +14,15 @@ import {
   writeToClipboard,
 } from './clipboard'
 import { createTray, destroyTray, broadcastCleared } from './tray'
-import { getShortcut, setStoredShortcut, DEFAULT_SHORTCUT } from './settings'
+import {
+  DEFAULT_QUICK_COPY_MODIFIER,
+  DEFAULT_SHORTCUT,
+  getQuickCopyModifier,
+  getShortcut,
+  setQuickCopyModifier,
+  setStoredShortcut,
+  type QuickCopyModifier,
+} from './settings'
 
 // dist-electron/  ← 컴파일된 main + preload (CommonJS, __dirname 사용 가능)
 // dist/           ← 컴파일된 렌더러
@@ -140,7 +148,7 @@ function openSettingsWindow(): void {
 
   settingsWin = new BrowserWindow({
     width: 460,
-    height: 380,
+    height: 480,
     resizable: false,
     minimizable: false,
     maximizable: false,
@@ -184,6 +192,8 @@ function registerIpc(): void {
   ipcMain.handle('settings:get', () => ({
     shortcut: getShortcut(),
     defaultShortcut: DEFAULT_SHORTCUT,
+    quickCopyModifier: getQuickCopyModifier(),
+    defaultQuickCopyModifier: DEFAULT_QUICK_COPY_MODIFIER,
   }))
 
   ipcMain.handle('settings:setShortcut', (_e, accelerator: string) => {
@@ -201,6 +211,9 @@ function registerIpc(): void {
   ipcMain.handle('settings:closeSelf', (e) =>
     BrowserWindow.fromWebContents(e.sender)?.close(),
   )
+  ipcMain.handle('settings:setQuickCopyModifier', (_e, modifier: QuickCopyModifier) => {
+    setQuickCopyModifier(modifier)
+  })
 
   // 새 조합 녹화 중 전역 단축키를 일시 중단한다:
   // (a) 오버레이가 뜨지 않게 하고 (b) 렌더러까지 입력이 전달되게 한다.

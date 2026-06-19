@@ -1,5 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { ClipboardItem, SettingsData, SetShortcutResult } from '../src/types'
+import type {
+  ClipboardItem,
+  QuickCopyModifier,
+  SettingsData,
+  SetShortcutResult,
+} from '../src/types'
 
 const clipboardAPI = {
   getItems: (): Promise<ClipboardItem[]> => ipcRenderer.invoke('db:getAll'),
@@ -41,6 +46,9 @@ const clipboardAPI = {
 
   setShortcut: (accelerator: string): Promise<SetShortcutResult> =>
     ipcRenderer.invoke('settings:setShortcut', accelerator),
+
+  setQuickCopyModifier: (modifier: QuickCopyModifier): Promise<void> =>
+    ipcRenderer.invoke('settings:setQuickCopyModifier', modifier),
 
   openSettings: (): Promise<void> => ipcRenderer.invoke('settings:open'),
 

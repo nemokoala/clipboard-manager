@@ -1,15 +1,44 @@
-import type { ClipboardItem } from '../types'
+import type { ClipboardItem, QuickCopyModifier } from '../types'
 import { groupByDay } from '../utils/format'
+import { isMacLike } from '../utils/platform'
 import DateGroup from './DateGroup'
 import HistoryItem from './HistoryItem'
 
+const IS_MAC = isMacLike()
+
 interface HistoryListProps {
   items: ClipboardItem[]
+  quickCopyModifier: QuickCopyModifier
   onCopy: (item: ClipboardItem) => void
   onDelete: (id: number) => void
 }
 
-export default function HistoryList({ items, onCopy, onDelete }: HistoryListProps) {
+function formatQuickCopyBadge(modifier: QuickCopyModifier, index: number): string | null {
+  if (index > 9) return null
+
+  const modifierLabel =
+    modifier === 'primary'
+      ? IS_MAC
+        ? '⌘'
+        : 'Ctrl'
+      : modifier === 'alt'
+        ? IS_MAC
+          ? '⌥'
+          : 'Alt'
+        : IS_MAC
+          ? '⇧'
+          : 'Shift'
+  const numberLabel = index === 9 ? '0' : String(index + 1)
+
+  return `${modifierLabel} ${numberLabel}`
+}
+
+export default function HistoryList({
+  items,
+  quickCopyModifier,
+  onCopy,
+  onDelete,
+}: HistoryListProps) {
   if (items.length === 0) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center text-white/30">
@@ -31,19 +60,24 @@ export default function HistoryList({ items, onCopy, onDelete }: HistoryListProp
   }
 
   const groups = groupByDay(items)
+  const itemIndexes = new Map(items.map((item, index) => [item.id, index]))
 
   return (
     <div className="flex-1 overflow-y-auto pb-3">
       {groups.map((group) => (
         <DateGroup key={group.key} label={group.label}>
-          {group.items.map((item) => (
-            <HistoryItem
-              key={item.id}
-              item={item}
-              onCopy={onCopy}
-              onDelete={onDelete}
-            />
-          ))}
+          {group.items.map((item) => {
+            const index = itemIndexes.get(item.id)
+            return (
+              <HistoryItem
+                key={item.id}
+                item={item}
+                shortcutBadge={index === undefined ? null : formatQuickCopyBadge(quickCopyModifier, index)}
+                onCopy={onCopy}
+                onDelete={onDelete}
+              />
+            )
+          })}
         </DateGroup>
       ))}
     </div>

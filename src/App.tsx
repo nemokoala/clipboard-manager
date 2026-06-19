@@ -1,15 +1,37 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { ClipboardItem, TabFilter } from "./types";
+import type { ClipboardItem, QuickCopyModifier, TabFilter } from "./types";
 import SearchBar from "./components/SearchBar";
 import TabBar from "./components/TabBar";
 import StorageBar from "./components/StorageBar";
 import HistoryList from "./components/HistoryList";
+import { isMacLike } from "./utils/platform";
+
+function getNumberShortcutIndex(e: KeyboardEvent): number | null {
+  const codeMatch = /^(?:Digit|Numpad)(\d)$/.exec(e.code);
+  const digit = codeMatch?.[1] ?? (/^\d$/.test(e.key) ? e.key : null);
+  if (!digit) return null;
+
+  const itemNumber = digit === "0" ? 10 : Number(digit);
+  return itemNumber - 1;
+}
+
+function hasQuickCopyModifier(e: KeyboardEvent, modifier: QuickCopyModifier): boolean {
+  if (e.altKey && modifier !== "alt") return false;
+  if (e.shiftKey && modifier !== "shift") return false;
+
+  if (modifier === "alt") return e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey;
+  if (modifier === "shift") return e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey;
+
+  return isMacLike() ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey;
+}
 
 export default function App() {
   const [items, setItems] = useState<ClipboardItem[]>([]);
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<TabFilter>("all");
   const [totalSize, setTotalSize] = useState(0);
+  const [quickCopyModifier, setQuickCopyModifier] =
+    useState<QuickCopyModifier>("primary");
 
   const refreshSize = useCallback(async () => {
     const size = await window.clipboardAPI.getTotalSize();
@@ -23,11 +45,23 @@ export default function App() {
     setItems(data);
   }, [query]);
 
+  const loadSettings = useCallback(() => {
+    void window.clipboardAPI.getSettings().then((settings) => {
+      setQuickCopyModifier(settings.quickCopyModifier);
+    });
+  }, []);
+
   // 초기 로드 + 검색어 변경 시마다 다시 로드.
   useEffect(() => {
     loadItems();
     refreshSize();
   }, [loadItems, refreshSize]);
+
+  useEffect(() => {
+    loadSettings();
+    window.addEventListener("focus", loadSettings);
+    return () => window.removeEventListener("focus", loadSettings);
+  }, [loadSettings]);
 
   // 메인 프로세스에서 push하는 실시간 갱신.
   useEffect(() => {
@@ -84,6 +118,26 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // 설정된 보조키 + 숫자로 보이는 순서의 항목을 바로 복사한다.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!hasQuickCopyModifier(e, quickCopyModifier)) return;
+
+      const index = getNumberShortcutIndex(e);
+      if (index === null) return;
+
+      const item = visibleItems[index];
+      if (!item) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      void handleCopy(item);
+    };
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [handleCopy, quickCopyModifier, visibleItems]);
+
   return (
     <div className="m-px flex h-[calc(100%-2px)] flex-col overflow-hidden rounded-[20px] bg-neutral-900/85 text-white/90 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.10)] backdrop-blur-xl">
       <SearchBar
@@ -99,6 +153,7 @@ export default function App() {
       <div className="h-px bg-white/10" />
       <HistoryList
         items={visibleItems}
+        quickCopyModifier={quickCopyModifier}
         onCopy={handleCopy}
         onDelete={handleDelete}
       />

@@ -3,11 +3,17 @@ import { formatTime } from '../utils/format'
 
 interface HistoryItemProps {
   item: ClipboardItem
+  shortcutBadge?: string | null
   onCopy: (item: ClipboardItem) => void
   onDelete: (id: number) => void
 }
 
-export default function HistoryItem({ item, onCopy, onDelete }: HistoryItemProps) {
+export default function HistoryItem({
+  item,
+  shortcutBadge,
+  onCopy,
+  onDelete,
+}: HistoryItemProps) {
   const handleDelete = (e: React.MouseEvent) => {
     // 부모 카드의 클릭-복사가 실행되지 않도록 한다.
     e.stopPropagation()
@@ -24,10 +30,10 @@ export default function HistoryItem({ item, onCopy, onDelete }: HistoryItemProps
         <img
           src={item.content}
           alt="clipboard image"
-          className="max-h-[80px] rounded-lg object-contain"
+          className="max-h-[80px] max-w-[calc(100%-4rem)] rounded-lg object-contain"
         />
       ) : item.type === 'link' ? (
-        <div className="flex items-center gap-2 pr-6">
+        <div className="flex items-center gap-2 pr-16">
           <svg
             className="h-3.5 w-3.5 shrink-0 text-sky-300/80"
             viewBox="0 0 24 24"
@@ -43,13 +49,19 @@ export default function HistoryItem({ item, onCopy, onDelete }: HistoryItemProps
           <span className="truncate text-sm text-sky-200/90">{item.content}</span>
         </div>
       ) : (
-        <p className="line-clamp-3 whitespace-pre-wrap break-words pr-6 text-sm text-white/90">
+        <p className="line-clamp-3 whitespace-pre-wrap break-words pr-16 text-sm text-white/90">
           {item.content}
         </p>
       )}
 
       {/* 하단: 시간 */}
-      <div className="mt-2 text-[11px] text-white/40">{formatTime(item.created_at)}</div>
+      <div className="mt-2 pr-16 text-[11px] text-white/40">{formatTime(item.created_at)}</div>
+
+      {shortcutBadge && (
+        <div className="pointer-events-none absolute bottom-2 right-2 rounded-md border border-white/10 bg-black/20 px-1.5 py-0.5 text-[10px] font-medium leading-4 text-white/45">
+          {shortcutBadge}
+        </div>
+      )}
 
       {/* 삭제 버튼 — hover 시 표시 */}
       <button
