@@ -17,8 +17,14 @@ import { createTray, destroyTray, broadcastCleared } from './tray'
 import {
   DEFAULT_QUICK_COPY_MODIFIER,
   DEFAULT_SHORTCUT,
+  MAX_MAIN_WINDOW_HEIGHT,
+  MAX_MAIN_WINDOW_WIDTH,
+  MIN_MAIN_WINDOW_HEIGHT,
+  MIN_MAIN_WINDOW_WIDTH,
+  getMainWindowSize,
   getQuickCopyModifier,
   getShortcut,
+  setMainWindowSize,
   setQuickCopyModifier,
   setStoredShortcut,
   type QuickCopyModifier,
@@ -42,11 +48,17 @@ let settingsWin: BrowserWindow | null = null
 let activeShortcut = ''
 
 function createWindow(): void {
+  const { width, height } = getMainWindowSize()
+
   win = new BrowserWindow({
-    width: 480,
-    height: 600,
+    width,
+    height,
     frame: false,
-    resizable: false,
+    resizable: true,
+    minWidth: MIN_MAIN_WINDOW_WIDTH,
+    maxWidth: MAX_MAIN_WINDOW_WIDTH,
+    minHeight: MIN_MAIN_WINDOW_HEIGHT,
+    maxHeight: MAX_MAIN_WINDOW_HEIGHT,
     alwaysOnTop: true,
     skipTaskbar: true,
     show: false,
@@ -82,6 +94,12 @@ function createWindow(): void {
     if (win && !win.webContents.isDevToolsOpened()) {
       win.hide()
     }
+  })
+
+  win.on('resized', () => {
+    if (!win) return
+    const [width, height] = win.getSize()
+    setMainWindowSize(width, height)
   })
 }
 
