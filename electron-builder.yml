@@ -1,5 +1,7 @@
-appId: com.yourname.clipboardmanager
-productName: ClipBoard
+appId: com.koala.simple-clipboard
+productName: Simple Clipboard
+# GH_TOKEN 등이 있으면 electron-builder가 github publish를 추측해 [null] 설정으로 크래시난다.
+publish: null
 directories:
   output: dist-release
   buildResources: assets
@@ -12,6 +14,9 @@ asarUnpack:
 mac:
   target: dmg
   category: public.app-category.productivity
+  # 키체인의 Apple Development 인증서로 자동 서명되면 배포용이 아니며,
+  # 인증서가 revoked 상태일 때 macOS가 악성코드로 차단한다.
+  identity: null
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
 win:
