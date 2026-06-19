@@ -6,6 +6,7 @@ directories:
 files:
   - dist
   - dist-electron
+  - assets
 asarUnpack:
   - "**/node_modules/better-sqlite3/**"
 mac:

@@ -17,15 +17,24 @@ interface TrayCallbacks {
 function loadTrayIcon(): Electron.NativeImage {
   const iconName = process.platform === 'win32' ? 'icon.ico' : 'iconTemplate.png'
   const iconPath = path.join(process.env.APP_ROOT ?? app.getAppPath(), 'assets', iconName)
-  const img = nativeImage.createFromPath(iconPath)
+  let img = nativeImage.createFromPath(iconPath)
+  if (img.isEmpty() && process.platform === 'darwin') {
+    img = nativeImage.createFromPath(
+      path.join(process.env.APP_ROOT ?? app.getAppPath(), 'assets', 'icon.ico'),
+    )
+  }
   if (!img.isEmpty()) {
     if (process.platform === 'darwin') img.setTemplateImage(true)
     return img
   }
-  // 1x1 투명 placeholder로 Tray 생성 예외를 방지한다.
-  return nativeImage.createFromDataURL(
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+  // 아이콘 파일이 없어도 메뉴바에서 보이도록 간단한 template 아이콘을 사용한다.
+  const fallback = nativeImage.createFromDataURL(
+    `data:image/svg+xml;utf8,${encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><path fill="black" d="M6 2.5h6a1.5 1.5 0 0 1 1.5 1.5v1H15a1.5 1.5 0 0 1 1.5 1.5V14A1.5 1.5 0 0 1 15 15.5H5A1.5 1.5 0 0 1 3.5 14v-1H3A1.5 1.5 0 0 1 1.5 11.5V4A1.5 1.5 0 0 1 3 2.5h3Zm0 2H3.5V11H5V6.5A1.5 1.5 0 0 1 6.5 5H12V4H6.5a.5.5 0 0 0-.5.5ZM7 7v6.5h8V7H7Z"/></svg>',
+    )}`,
   )
+  if (process.platform === 'darwin') fallback.setTemplateImage(true)
+  return fallback
 }
 
 export function createTray({ onOpen, onSettings, onCleared }: TrayCallbacks): Tray {
