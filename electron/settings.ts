@@ -3,6 +3,7 @@ import Store from 'electron-store'
 /** 오버레이 토글용 기본 전역 단축키. */
 export const DEFAULT_SHORTCUT = 'CommandOrControl+Shift+V'
 export const DEFAULT_QUICK_COPY_MODIFIER = 'primary'
+export const DEFAULT_HIDE_ON_BLUR = true
 export const DEFAULT_MAIN_WINDOW_WIDTH = 480
 export const DEFAULT_MAIN_WINDOW_HEIGHT = 600
 export const MIN_MAIN_WINDOW_WIDTH = 360
@@ -15,6 +16,7 @@ export type QuickCopyModifier = 'primary' | 'alt' | 'shift'
 interface SettingsSchema {
   shortcut: string
   quickCopyModifier: QuickCopyModifier
+  hideOnBlur: boolean
   mainWindowWidth: number
   mainWindowHeight: number
 }
@@ -29,6 +31,7 @@ function getStore(): Store<SettingsSchema> {
       defaults: {
         shortcut: DEFAULT_SHORTCUT,
         quickCopyModifier: DEFAULT_QUICK_COPY_MODIFIER,
+        hideOnBlur: DEFAULT_HIDE_ON_BLUR,
         mainWindowWidth: DEFAULT_MAIN_WINDOW_WIDTH,
         mainWindowHeight: DEFAULT_MAIN_WINDOW_HEIGHT,
       },
@@ -52,6 +55,14 @@ export function getQuickCopyModifier(): QuickCopyModifier {
 export function setQuickCopyModifier(modifier: QuickCopyModifier): void {
   if (!['primary', 'alt', 'shift'].includes(modifier)) return
   getStore().set('quickCopyModifier', modifier)
+}
+
+export function getHideOnBlur(): boolean {
+  return getStore().get('hideOnBlur')
+}
+
+export function setHideOnBlur(hideOnBlur: boolean): void {
+  getStore().set('hideOnBlur', hideOnBlur)
 }
 
 function clampSize(value: number, min: number, max: number): number {

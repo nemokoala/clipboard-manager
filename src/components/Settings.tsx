@@ -87,6 +87,9 @@ export default function Settings() {
     useState<QuickCopyModifier>('primary')
   const [draftQuickCopyModifier, setDraftQuickCopyModifier] =
     useState<QuickCopyModifier>('primary')
+  const [savedHideOnBlur, setSavedHideOnBlur] = useState(true)
+  const [defaultHideOnBlur, setDefaultHideOnBlur] = useState(true)
+  const [draftHideOnBlur, setDraftHideOnBlur] = useState(true)
   const [recording, setRecording] = useState(false)
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
 
@@ -98,6 +101,9 @@ export default function Settings() {
       setSavedQuickCopyModifier(s.quickCopyModifier)
       setDraftQuickCopyModifier(s.quickCopyModifier)
       setDefaultQuickCopyModifier(s.defaultQuickCopyModifier)
+      setSavedHideOnBlur(s.hideOnBlur)
+      setDraftHideOnBlur(s.hideOnBlur)
+      setDefaultHideOnBlur(s.defaultHideOnBlur)
     })
   }, [])
 
@@ -151,18 +157,31 @@ export default function Settings() {
       setSavedQuickCopyModifier(draftQuickCopyModifier)
     }
 
-    if (draft !== saved || draftQuickCopyModifier !== savedQuickCopyModifier) {
-      setMessage({ kind: 'ok', text: '단축키가 저장되었습니다.' })
+    if (draftHideOnBlur !== savedHideOnBlur) {
+      await window.clipboardAPI.setHideOnBlur(draftHideOnBlur)
+      setSavedHideOnBlur(draftHideOnBlur)
+    }
+
+    if (
+      draft !== saved ||
+      draftQuickCopyModifier !== savedQuickCopyModifier ||
+      draftHideOnBlur !== savedHideOnBlur
+    ) {
+      setMessage({ kind: 'ok', text: '설정이 저장되었습니다.' })
     }
   }
 
   const handleReset = () => {
     setDraft(defaultShortcut)
     setDraftQuickCopyModifier(defaultQuickCopyModifier)
+    setDraftHideOnBlur(defaultHideOnBlur)
     setMessage(null)
   }
 
-  const dirty = draft !== saved || draftQuickCopyModifier !== savedQuickCopyModifier
+  const dirty =
+    draft !== saved ||
+    draftQuickCopyModifier !== savedQuickCopyModifier ||
+    draftHideOnBlur !== savedHideOnBlur
 
   return (
     <div className="flex h-full flex-col bg-neutral-900 p-6 text-white/90">
@@ -224,6 +243,39 @@ export default function Settings() {
         <p className="mt-2 text-[11px] text-white/40">
           선택한 보조키와 1~9, 0을 눌러 현재 보이는 순서의 항목을 복사합니다. 0은 10번째 항목입니다.
         </p>
+      </div>
+
+      <div className="mt-6">
+        <label className="mb-2 block text-sm font-medium text-white/80">창 동작</label>
+
+        <button
+          type="button"
+          onClick={() => {
+            setDraftHideOnBlur((value) => !value)
+            setMessage(null)
+          }}
+          className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left transition hover:bg-white/10"
+        >
+          <span>
+            <span className="block text-sm font-medium text-white/90">포커스를 잃으면 자동으로 닫기</span>
+            <span className="mt-1 block text-[11px] text-white/40">
+              끄면 X 버튼이나 열기 단축키를 다시 눌러야 창이 닫힙니다.
+            </span>
+          </span>
+          <span
+            className={[
+              'ml-4 flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition',
+              draftHideOnBlur ? 'bg-sky-500' : 'bg-white/15',
+            ].join(' ')}
+          >
+            <span
+              className={[
+                'h-5 w-5 rounded-full bg-white transition',
+                draftHideOnBlur ? 'translate-x-5' : 'translate-x-0',
+              ].join(' ')}
+            />
+          </span>
+        </button>
       </div>
 
       {message && (

@@ -26,6 +26,10 @@ export interface SettingsData {
   quickCopyModifier: QuickCopyModifier
   /** 숫자 빠른 복사 보조키 기본값. */
   defaultQuickCopyModifier: QuickCopyModifier
+  /** 포커스를 잃었을 때 메인 창을 자동으로 숨길지 여부. */
+  hideOnBlur: boolean
+  /** 자동 숨김 기본값. */
+  defaultHideOnBlur: boolean
 }
 
 /** 단축키 변경 시도 결과. */
@@ -51,6 +55,7 @@ export interface ClipboardAPI {
   getSettings: () => Promise<SettingsData>
   setShortcut: (accelerator: string) => Promise<SetShortcutResult>
   setQuickCopyModifier: (modifier: QuickCopyModifier) => Promise<void>
+  setHideOnBlur: (hideOnBlur: boolean) => Promise<void>
   openSettings: () => Promise<void>
   setRecording: (recording: boolean) => Promise<void>
   closeSelf: () => Promise<void>

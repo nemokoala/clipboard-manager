@@ -50,6 +50,9 @@ const clipboardAPI = {
   setQuickCopyModifier: (modifier: QuickCopyModifier): Promise<void> =>
     ipcRenderer.invoke('settings:setQuickCopyModifier', modifier),
 
+  setHideOnBlur: (hideOnBlur: boolean): Promise<void> =>
+    ipcRenderer.invoke('settings:setHideOnBlur', hideOnBlur),
+
   openSettings: (): Promise<void> => ipcRenderer.invoke('settings:open'),
 
   /** 새 조합 녹화 중 전역 단축키 일시 중단/복원. */

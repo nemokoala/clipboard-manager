@@ -15,15 +15,18 @@ import {
 } from './clipboard'
 import { createTray, destroyTray, broadcastCleared } from './tray'
 import {
+  DEFAULT_HIDE_ON_BLUR,
   DEFAULT_QUICK_COPY_MODIFIER,
   DEFAULT_SHORTCUT,
   MAX_MAIN_WINDOW_HEIGHT,
   MAX_MAIN_WINDOW_WIDTH,
   MIN_MAIN_WINDOW_HEIGHT,
   MIN_MAIN_WINDOW_WIDTH,
+  getHideOnBlur,
   getMainWindowSize,
   getQuickCopyModifier,
   getShortcut,
+  setHideOnBlur,
   setMainWindowSize,
   setQuickCopyModifier,
   setStoredShortcut,
@@ -91,6 +94,7 @@ function createWindow(): void {
   win.on('blur', () => {
     // 개발 모드에서는 에디터/DevTools 로 포커스가 이동해도 창을 숨기지 않는다.
     if (IS_DEV) return
+    if (!getHideOnBlur()) return
     if (win && !win.webContents.isDevToolsOpened()) {
       win.hide()
     }
@@ -160,16 +164,20 @@ function applyShortcut(accelerator: string): boolean {
 function openSettingsWindow(): void {
   if (settingsWin) {
     settingsWin.show()
+    settingsWin.moveTop()
     settingsWin.focus()
     return
   }
 
   settingsWin = new BrowserWindow({
+    parent: win ?? undefined,
+    modal: false,
     width: 460,
-    height: 480,
+    height: 560,
     resizable: false,
     minimizable: false,
     maximizable: false,
+    alwaysOnTop: true,
     title: '설정',
     backgroundColor: '#171717',
     autoHideMenuBar: true,
@@ -212,6 +220,8 @@ function registerIpc(): void {
     defaultShortcut: DEFAULT_SHORTCUT,
     quickCopyModifier: getQuickCopyModifier(),
     defaultQuickCopyModifier: DEFAULT_QUICK_COPY_MODIFIER,
+    hideOnBlur: getHideOnBlur(),
+    defaultHideOnBlur: DEFAULT_HIDE_ON_BLUR,
   }))
 
   ipcMain.handle('settings:setShortcut', (_e, accelerator: string) => {
@@ -231,6 +241,9 @@ function registerIpc(): void {
   )
   ipcMain.handle('settings:setQuickCopyModifier', (_e, modifier: QuickCopyModifier) => {
     setQuickCopyModifier(modifier)
+  })
+  ipcMain.handle('settings:setHideOnBlur', (_e, hideOnBlur: boolean) => {
+    setHideOnBlur(hideOnBlur)
   })
 
   // 새 조합 녹화 중 전역 단축키를 일시 중단한다:
