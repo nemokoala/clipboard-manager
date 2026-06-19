@@ -15,12 +15,17 @@ function getNumberShortcutIndex(e: KeyboardEvent): number | null {
   return itemNumber - 1;
 }
 
-function hasQuickCopyModifier(e: KeyboardEvent, modifier: QuickCopyModifier): boolean {
+function hasQuickCopyModifier(
+  e: KeyboardEvent,
+  modifier: QuickCopyModifier
+): boolean {
   if (e.altKey && modifier !== "alt") return false;
   if (e.shiftKey && modifier !== "shift") return false;
 
-  if (modifier === "alt") return e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey;
-  if (modifier === "shift") return e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey;
+  if (modifier === "alt")
+    return e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey;
+  if (modifier === "shift")
+    return e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey;
 
   return isMacLike() ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey;
 }
@@ -92,7 +97,7 @@ export default function App() {
       await loadItems();
       await refreshSize();
     },
-    [loadItems, refreshSize],
+    [loadItems, refreshSize]
   );
 
   const handleClose = useCallback(() => {
@@ -139,7 +144,7 @@ export default function App() {
   }, [handleCopy, quickCopyModifier, visibleItems]);
 
   return (
-    <div className="m-px flex h-[calc(100%-2px)] flex-col overflow-hidden rounded-[20px] bg-neutral-900/85 text-white/90 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.10)] backdrop-blur-xl">
+    <div className="m-px flex h-[calc(100%-2px)] flex-col overflow-hidden rounded-[20px] bg-neutral-900/95 text-white/90 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.10)] backdrop-blur-xl">
       <SearchBar
         value={query}
         onChange={setQuery}

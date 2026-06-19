@@ -188,94 +188,96 @@ export default function Settings() {
       <h1 className="text-lg font-semibold">설정</h1>
       <p className="mt-1 text-xs text-white/50">오버레이 열기와 빠른 복사 단축키를 변경합니다.</p>
 
-      <div className="mt-6">
-        <label className="mb-2 block text-sm font-medium text-white/80">열기 단축키</label>
+      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+        <div className="mt-6">
+          <label className="mb-2 block text-sm font-medium text-white/80">열기 단축키</label>
 
-        <button
-          onClick={() => {
-            setRecordingMode(true)
-            setMessage(null)
-          }}
-          onBlur={() => recording && setRecordingMode(false)}
-          onKeyDown={handleKeyDown}
-          className={[
-            'flex h-12 w-full items-center justify-center rounded-xl border text-base font-medium tracking-wide transition focus:outline-none',
-            recording
-              ? 'border-sky-400/60 bg-sky-400/10 text-sky-200'
-              : 'border-white/10 bg-white/5 text-white/90 hover:bg-white/10',
-          ].join(' ')}
-        >
-          {recording ? '키를 누르세요…' : draft ? prettyAccelerator(draft) : '설정되지 않음'}
-        </button>
-
-        <p className="mt-2 text-[11px] text-white/40">
-          버튼을 클릭한 뒤 원하는 조합(예: Ctrl + Shift + V)을 누르세요. 최소 하나의 보조키(Ctrl/Alt/Shift)가
-          필요합니다. Esc로 취소.
-        </p>
-      </div>
-
-      <div className="mt-6">
-        <label className="mb-2 block text-sm font-medium text-white/80">빠른 복사 단축키</label>
-
-        <div className="grid grid-cols-3 gap-2">
-          {QUICK_COPY_OPTIONS.map((modifier) => {
-            const active = draftQuickCopyModifier === modifier
-            return (
-              <button
-                key={modifier}
-                onClick={() => {
-                  setDraftQuickCopyModifier(modifier)
-                  setMessage(null)
-                }}
-                className={[
-                  'rounded-lg border px-3 py-2 text-sm font-medium transition',
-                  active
-                    ? 'border-sky-400/60 bg-sky-400/10 text-sky-200'
-                    : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white/90',
-                ].join(' ')}
-              >
-                {prettyQuickCopyModifier(modifier)} + 숫자
-              </button>
-            )
-          })}
-        </div>
-
-        <p className="mt-2 text-[11px] text-white/40">
-          선택한 보조키와 1~9, 0을 눌러 현재 보이는 순서의 항목을 복사합니다. 0은 10번째 항목입니다.
-        </p>
-      </div>
-
-      <div className="mt-6">
-        <label className="mb-2 block text-sm font-medium text-white/80">창 동작</label>
-
-        <button
-          type="button"
-          onClick={() => {
-            setDraftHideOnBlur((value) => !value)
-            setMessage(null)
-          }}
-          className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left transition hover:bg-white/10"
-        >
-          <span>
-            <span className="block text-sm font-medium text-white/90">포커스를 잃으면 자동으로 닫기</span>
-            <span className="mt-1 block text-[11px] text-white/40">
-              끄면 X 버튼이나 열기 단축키를 다시 눌러야 창이 닫힙니다.
-            </span>
-          </span>
-          <span
+          <button
+            onClick={() => {
+              setRecordingMode(true)
+              setMessage(null)
+            }}
+            onBlur={() => recording && setRecordingMode(false)}
+            onKeyDown={handleKeyDown}
             className={[
-              'ml-4 flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition',
-              draftHideOnBlur ? 'bg-sky-500' : 'bg-white/15',
+              'flex h-12 w-full items-center justify-center rounded-xl border text-base font-medium tracking-wide transition focus:outline-none',
+              recording
+                ? 'border-sky-400/60 bg-sky-400/10 text-sky-200'
+                : 'border-white/10 bg-white/5 text-white/90 hover:bg-white/10',
             ].join(' ')}
           >
+            {recording ? '키를 누르세요…' : draft ? prettyAccelerator(draft) : '설정되지 않음'}
+          </button>
+
+          <p className="mt-2 text-[11px] text-white/40">
+            버튼을 클릭한 뒤 원하는 조합(예: Ctrl + Shift + V)을 누르세요. 최소 하나의 보조키(Ctrl/Alt/Shift)가
+            필요합니다. Esc로 취소.
+          </p>
+        </div>
+
+        <div className="mt-6">
+          <label className="mb-2 block text-sm font-medium text-white/80">빠른 복사 단축키</label>
+
+          <div className="grid grid-cols-3 gap-2">
+            {QUICK_COPY_OPTIONS.map((modifier) => {
+              const active = draftQuickCopyModifier === modifier
+              return (
+                <button
+                  key={modifier}
+                  onClick={() => {
+                    setDraftQuickCopyModifier(modifier)
+                    setMessage(null)
+                  }}
+                  className={[
+                    'rounded-lg border px-3 py-2 text-sm font-medium transition',
+                    active
+                      ? 'border-sky-400/60 bg-sky-400/10 text-sky-200'
+                      : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white/90',
+                  ].join(' ')}
+                >
+                  {prettyQuickCopyModifier(modifier)} + 숫자
+                </button>
+              )
+            })}
+          </div>
+
+          <p className="mt-2 text-[11px] text-white/40">
+            선택한 보조키와 1~9, 0을 눌러 현재 보이는 순서의 항목을 복사합니다. 0은 10번째 항목입니다.
+          </p>
+        </div>
+
+        <div className="mt-6 pb-1">
+          <label className="mb-2 block text-sm font-medium text-white/80">창 동작</label>
+
+          <button
+            type="button"
+            onClick={() => {
+              setDraftHideOnBlur((value) => !value)
+              setMessage(null)
+            }}
+            className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left transition hover:bg-white/10"
+          >
+            <span>
+              <span className="block text-sm font-medium text-white/90">포커스를 잃으면 자동으로 닫기</span>
+              <span className="mt-1 block text-[11px] text-white/40">
+                끄면 X 버튼이나 열기 단축키를 다시 눌러야 창이 닫힙니다.
+              </span>
+            </span>
             <span
               className={[
-                'h-5 w-5 rounded-full bg-white transition',
-                draftHideOnBlur ? 'translate-x-5' : 'translate-x-0',
+                'ml-4 flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition',
+                draftHideOnBlur ? 'bg-sky-500' : 'bg-white/15',
               ].join(' ')}
-            />
-          </span>
-        </button>
+            >
+              <span
+                className={[
+                  'h-5 w-5 rounded-full bg-white transition',
+                  draftHideOnBlur ? 'translate-x-5' : 'translate-x-0',
+                ].join(' ')}
+              />
+            </span>
+          </button>
+        </div>
       </div>
 
       {message && (
@@ -291,7 +293,7 @@ export default function Settings() {
         </div>
       )}
 
-      <div className="mt-auto flex items-center justify-between pt-6">
+      <div className="flex shrink-0 items-center justify-between pt-4">
         <button
           onClick={handleReset}
           className="rounded-lg px-3 py-2 text-xs text-white/50 transition hover:bg-white/5 hover:text-white/80"

@@ -173,7 +173,7 @@ function openSettingsWindow(): void {
     parent: win ?? undefined,
     modal: false,
     width: 460,
-    height: 560,
+    height: 660,
     resizable: false,
     minimizable: false,
     maximizable: false,
