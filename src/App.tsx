@@ -114,10 +114,23 @@ export default function App() {
     return items.filter((item) => item.type === tab);
   }, [items, tab]);
 
-  // Escape로 닫기.
+  // Escape로 닫고, 기본 설정 단축키로 설정 창을 연다.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") window.clipboardAPI.hideWindow();
+      if (e.key === "Escape") {
+        void window.clipboardAPI.hideWindow();
+        return;
+      }
+
+      const hasPrimaryModifier = isMacLike()
+        ? e.metaKey && !e.ctrlKey
+        : e.ctrlKey && !e.metaKey;
+
+      if (hasPrimaryModifier && !e.altKey && !e.shiftKey && e.code === "Comma") {
+        e.preventDefault();
+        e.stopPropagation();
+        void window.clipboardAPI.openSettings();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
