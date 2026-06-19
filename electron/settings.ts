@@ -4,6 +4,7 @@ import Store from 'electron-store'
 export const DEFAULT_SHORTCUT = 'CommandOrControl+Shift+V'
 export const DEFAULT_QUICK_COPY_MODIFIER = 'primary'
 export const DEFAULT_HIDE_ON_BLUR = true
+export const DEFAULT_LAUNCH_AT_LOGIN = false
 export const DEFAULT_MAIN_WINDOW_WIDTH = 480
 export const DEFAULT_MAIN_WINDOW_HEIGHT = 600
 export const MIN_MAIN_WINDOW_WIDTH = 360
@@ -17,6 +18,7 @@ interface SettingsSchema {
   shortcut: string
   quickCopyModifier: QuickCopyModifier
   hideOnBlur: boolean
+  launchAtLogin: boolean
   mainWindowWidth: number
   mainWindowHeight: number
 }
@@ -32,6 +34,7 @@ function getStore(): Store<SettingsSchema> {
         shortcut: DEFAULT_SHORTCUT,
         quickCopyModifier: DEFAULT_QUICK_COPY_MODIFIER,
         hideOnBlur: DEFAULT_HIDE_ON_BLUR,
+        launchAtLogin: DEFAULT_LAUNCH_AT_LOGIN,
         mainWindowWidth: DEFAULT_MAIN_WINDOW_WIDTH,
         mainWindowHeight: DEFAULT_MAIN_WINDOW_HEIGHT,
       },
@@ -63,6 +66,14 @@ export function getHideOnBlur(): boolean {
 
 export function setHideOnBlur(hideOnBlur: boolean): void {
   getStore().set('hideOnBlur', hideOnBlur)
+}
+
+export function getLaunchAtLogin(): boolean {
+  return getStore().get('launchAtLogin')
+}
+
+export function setLaunchAtLogin(launchAtLogin: boolean): void {
+  getStore().set('launchAtLogin', launchAtLogin)
 }
 
 function clampSize(value: number, min: number, max: number): number {

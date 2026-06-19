@@ -61,6 +61,9 @@ const clipboardAPI = {
   setHideOnBlur: (hideOnBlur: boolean): Promise<void> =>
     ipcRenderer.invoke('settings:setHideOnBlur', hideOnBlur),
 
+  setLaunchAtLogin: (launchAtLogin: boolean): Promise<void> =>
+    ipcRenderer.invoke('settings:setLaunchAtLogin', launchAtLogin),
+
   openSettings: (): Promise<void> => ipcRenderer.invoke('settings:open'),
 
   /** 새 조합 녹화 중 전역 단축키 일시 중단/복원. */

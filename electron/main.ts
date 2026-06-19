@@ -16,6 +16,7 @@ import {
 import { createTray, destroyTray, broadcastCleared } from "./tray";
 import {
   DEFAULT_HIDE_ON_BLUR,
+  DEFAULT_LAUNCH_AT_LOGIN,
   DEFAULT_QUICK_COPY_MODIFIER,
   DEFAULT_SHORTCUT,
   MAX_MAIN_WINDOW_HEIGHT,
@@ -23,10 +24,12 @@ import {
   MIN_MAIN_WINDOW_HEIGHT,
   MIN_MAIN_WINDOW_WIDTH,
   getHideOnBlur,
+  getLaunchAtLogin,
   getMainWindowSize,
   getQuickCopyModifier,
   getShortcut,
   setHideOnBlur,
+  setLaunchAtLogin,
   setMainWindowSize,
   setQuickCopyModifier,
   setStoredShortcut,
@@ -60,6 +63,13 @@ const TOAST_DURATION_MS = 1400;
 function keepVisibleOnMacFullscreen(target: BrowserWindow): void {
   if (process.platform !== "darwin") return;
   target.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+}
+
+function applyLaunchAtLogin(launchAtLogin: boolean): void {
+  app.setLoginItemSettings({
+    openAtLogin: launchAtLogin,
+    openAsHidden: launchAtLogin,
+  });
 }
 
 function createWindow(): void {
@@ -100,17 +110,19 @@ function createWindow(): void {
   // 첫 실행 시 오버레이를 한 번 표시해 앱이 실행 중임을 알린다.
   // (`show: false`는 UI 페인트 전 흰 화면 깜빡임을 방지한다.)
   win.once("ready-to-show", () => {
+    if (app.getLoginItemSettings().wasOpenedAtLogin) return;
     showWindow();
   });
 
   // 포커스를 잃으면 오버레이를 자동으로 숨긴다.
   win.on("blur", () => {
-    // 개발 모드에서는 에디터/DevTools 로 포커스가 이동해도 창을 숨기지 않는다.
-    // if (IS_DEV) return
-    if (!getHideOnBlur()) return;
-    if (win && !win.webContents.isDevToolsOpened()) {
-      win.hide();
-    }
+    setTimeout(() => {
+      if (!getHideOnBlur()) return;
+      if (settingsWin?.isVisible()) return;
+      if (win && !win.webContents.isDevToolsOpened()) {
+        win.hide();
+      }
+    }, 0);
   });
 
   win.on("resized", () => {
@@ -264,7 +276,7 @@ function openSettingsWindow(): void {
     parent: win ?? undefined,
     modal: false,
     width: 460,
-    height: 660,
+    height: 720,
     resizable: false,
     minimizable: false,
     maximizable: false,
@@ -319,6 +331,8 @@ function registerIpc(): void {
     defaultQuickCopyModifier: DEFAULT_QUICK_COPY_MODIFIER,
     hideOnBlur: getHideOnBlur(),
     defaultHideOnBlur: DEFAULT_HIDE_ON_BLUR,
+    launchAtLogin: getLaunchAtLogin(),
+    defaultLaunchAtLogin: DEFAULT_LAUNCH_AT_LOGIN,
   }));
 
   ipcMain.handle("settings:setShortcut", (_e, accelerator: string) => {
@@ -348,6 +362,10 @@ function registerIpc(): void {
   ipcMain.handle("settings:setHideOnBlur", (_e, hideOnBlur: boolean) => {
     setHideOnBlur(hideOnBlur);
   });
+  ipcMain.handle("settings:setLaunchAtLogin", (_e, launchAtLogin: boolean) => {
+    setLaunchAtLogin(launchAtLogin);
+    applyLaunchAtLogin(launchAtLogin);
+  });
 
   // 새 조합 녹화 중 전역 단축키를 일시 중단한다:
   // (a) 오버레이가 뜨지 않게 하고 (b) 렌더러까지 입력이 전달되게 한다.
@@ -363,6 +381,7 @@ function registerIpc(): void {
 
 app.whenReady().then(() => {
   initDb();
+  applyLaunchAtLogin(getLaunchAtLogin());
   registerIpc();
   createWindow();
   createToastWindow();

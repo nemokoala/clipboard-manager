@@ -30,6 +30,10 @@ export interface SettingsData {
   hideOnBlur: boolean
   /** 자동 숨김 기본값. */
   defaultHideOnBlur: boolean
+  /** OS 로그인 시 앱을 자동 실행할지 여부. */
+  launchAtLogin: boolean
+  /** 자동 실행 기본값. */
+  defaultLaunchAtLogin: boolean
 }
 
 /** 단축키 변경 시도 결과. */
@@ -58,6 +62,7 @@ export interface ClipboardAPI {
   setShortcut: (accelerator: string) => Promise<SetShortcutResult>
   setQuickCopyModifier: (modifier: QuickCopyModifier) => Promise<void>
   setHideOnBlur: (hideOnBlur: boolean) => Promise<void>
+  setLaunchAtLogin: (launchAtLogin: boolean) => Promise<void>
   openSettings: () => Promise<void>
   setRecording: (recording: boolean) => Promise<void>
   closeSelf: () => Promise<void>

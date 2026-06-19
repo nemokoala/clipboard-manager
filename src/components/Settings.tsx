@@ -90,6 +90,9 @@ export default function Settings() {
   const [savedHideOnBlur, setSavedHideOnBlur] = useState(true)
   const [defaultHideOnBlur, setDefaultHideOnBlur] = useState(true)
   const [draftHideOnBlur, setDraftHideOnBlur] = useState(true)
+  const [savedLaunchAtLogin, setSavedLaunchAtLogin] = useState(false)
+  const [defaultLaunchAtLogin, setDefaultLaunchAtLogin] = useState(false)
+  const [draftLaunchAtLogin, setDraftLaunchAtLogin] = useState(false)
   const [recording, setRecording] = useState(false)
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
 
@@ -104,6 +107,9 @@ export default function Settings() {
       setSavedHideOnBlur(s.hideOnBlur)
       setDraftHideOnBlur(s.hideOnBlur)
       setDefaultHideOnBlur(s.defaultHideOnBlur)
+      setSavedLaunchAtLogin(s.launchAtLogin)
+      setDraftLaunchAtLogin(s.launchAtLogin)
+      setDefaultLaunchAtLogin(s.defaultLaunchAtLogin)
     })
   }, [])
 
@@ -162,10 +168,16 @@ export default function Settings() {
       setSavedHideOnBlur(draftHideOnBlur)
     }
 
+    if (draftLaunchAtLogin !== savedLaunchAtLogin) {
+      await window.clipboardAPI.setLaunchAtLogin(draftLaunchAtLogin)
+      setSavedLaunchAtLogin(draftLaunchAtLogin)
+    }
+
     if (
       draft !== saved ||
       draftQuickCopyModifier !== savedQuickCopyModifier ||
-      draftHideOnBlur !== savedHideOnBlur
+      draftHideOnBlur !== savedHideOnBlur ||
+      draftLaunchAtLogin !== savedLaunchAtLogin
     ) {
       setMessage({ kind: 'ok', text: '설정이 저장되었습니다.' })
     }
@@ -175,13 +187,15 @@ export default function Settings() {
     setDraft(defaultShortcut)
     setDraftQuickCopyModifier(defaultQuickCopyModifier)
     setDraftHideOnBlur(defaultHideOnBlur)
+    setDraftLaunchAtLogin(defaultLaunchAtLogin)
     setMessage(null)
   }
 
   const dirty =
     draft !== saved ||
     draftQuickCopyModifier !== savedQuickCopyModifier ||
-    draftHideOnBlur !== savedHideOnBlur
+    draftHideOnBlur !== savedHideOnBlur ||
+    draftLaunchAtLogin !== savedLaunchAtLogin
 
   return (
     <div className="flex h-full flex-col bg-neutral-900 p-6 text-white/90">
@@ -273,6 +287,35 @@ export default function Settings() {
                 className={[
                   'h-5 w-5 rounded-full bg-white transition',
                   draftHideOnBlur ? 'translate-x-5' : 'translate-x-0',
+                ].join(' ')}
+              />
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setDraftLaunchAtLogin((value) => !value)
+              setMessage(null)
+            }}
+            className="mt-2 flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left transition hover:bg-white/10"
+          >
+            <span>
+              <span className="block text-sm font-medium text-white/90">로그인 시 자동 실행</span>
+              <span className="mt-1 block text-[11px] text-white/40">
+                컴퓨터를 켜면 앱을 백그라운드에서 바로 실행합니다.
+              </span>
+            </span>
+            <span
+              className={[
+                'ml-4 flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition',
+                draftLaunchAtLogin ? 'bg-sky-500' : 'bg-white/15',
+              ].join(' ')}
+            >
+              <span
+                className={[
+                  'h-5 w-5 rounded-full bg-white transition',
+                  draftLaunchAtLogin ? 'translate-x-5' : 'translate-x-0',
                 ].join(' ')}
               />
             </span>
