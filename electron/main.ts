@@ -42,10 +42,10 @@ function createWindow(): void {
     alwaysOnTop: true,
     skipTaskbar: true,
     show: false,
-    // 양 플랫폼 모두 투명 처리: CSS `rounded-2xl` 모서리가 실제 창 형태가 됨
-    // (네이티브 아크릴 레이어는 사각형이라 둥근 모서리를 따라갈 수 없어 Windows에서 radius가 어색했음).
+    // CSS 패널 하나만 실제 창 형태를 만들게 한다.
+    // macOS vibrancy를 transparent 창과 같이 쓰면 네이티브 material edge와
+    // CSS rounded edge가 겹쳐 보여 모서리가 두 겹처럼 보일 수 있다.
     transparent: true,
-    vibrancy: process.platform === 'darwin' ? 'under-window' : undefined,
     backgroundColor: '#00000000',
     hasShadow: true,
     webPreferences: {

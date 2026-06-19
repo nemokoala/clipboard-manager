@@ -85,7 +85,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-neutral-900/80 text-white/90 backdrop-blur-xl">
+    <div className="m-px flex h-[calc(100%-2px)] flex-col overflow-hidden rounded-[20px] bg-neutral-900/85 text-white/90 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.10)] backdrop-blur-xl">
       <SearchBar
         value={query}
         onChange={setQuery}
