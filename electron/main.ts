@@ -57,6 +57,11 @@ const TOAST_WIDTH = 320
 const TOAST_HEIGHT = 56
 const TOAST_DURATION_MS = 1400
 
+function keepVisibleOnMacFullscreen(target: BrowserWindow): void {
+  if (process.platform !== 'darwin') return
+  target.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+}
+
 function createWindow(): void {
   const { width, height } = getMainWindowSize()
 
@@ -84,6 +89,7 @@ function createWindow(): void {
       nodeIntegration: false,
     },
   })
+  keepVisibleOnMacFullscreen(win)
 
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL)
@@ -153,6 +159,7 @@ function createToastWindow(): void {
       nodeIntegration: false,
     },
   })
+  keepVisibleOnMacFullscreen(toastWin)
 
   toastWin.setIgnoreMouseEvents(true)
 
@@ -269,6 +276,7 @@ function openSettingsWindow(): void {
       nodeIntegration: false,
     },
   })
+  keepVisibleOnMacFullscreen(settingsWin)
 
   // 기본 File/Edit/View… 메뉴바 제거 — 단순 설정 대화상자.
   settingsWin.removeMenu()
