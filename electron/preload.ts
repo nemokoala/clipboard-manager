@@ -4,6 +4,7 @@ import type {
   QuickCopyModifier,
   SettingsData,
   SetShortcutResult,
+  ThemeMode,
 } from '../src/types'
 
 const clipboardAPI = {
@@ -63,6 +64,18 @@ const clipboardAPI = {
 
   setLaunchAtLogin: (launchAtLogin: boolean): Promise<void> =>
     ipcRenderer.invoke('settings:setLaunchAtLogin', launchAtLogin),
+
+  setTheme: (theme: ThemeMode): Promise<void> =>
+    ipcRenderer.invoke('settings:setTheme', theme),
+
+  /** 다른 창에서 테마가 바뀌면(또는 시스템 테마 전환) 호출된다. */
+  onThemeChanged: (callback: (theme: ThemeMode) => void): void => {
+    ipcRenderer.on('theme:changed', (_event, theme: ThemeMode) => callback(theme))
+  },
+
+  removeThemeChangedListener: (): void => {
+    ipcRenderer.removeAllListeners('theme:changed')
+  },
 
   openSettings: (): Promise<void> => ipcRenderer.invoke('settings:open'),
 

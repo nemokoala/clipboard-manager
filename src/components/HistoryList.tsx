@@ -41,7 +41,7 @@ export default function HistoryList({
 }: HistoryListProps) {
   if (items.length === 0) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center text-white/30">
+      <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center text-gray-300 dark:text-gray-600">
         <svg
           className="h-10 w-10"
           viewBox="0 0 24 24"

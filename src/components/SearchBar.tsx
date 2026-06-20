@@ -7,33 +7,35 @@ interface SearchBarProps {
 
 export default function SearchBar({ value, onChange, onClose, onSettings }: SearchBarProps) {
   return (
-    <div className="drag-region flex items-center gap-2 px-4 py-3">
-      <svg
-        className="h-4 w-4 shrink-0 text-white/40"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="11" cy="11" r="8" />
-        <path d="m21 21-4.3-4.3" />
-      </svg>
+    <div className="drag-region flex items-center gap-2 px-3 py-3">
+      <div className="no-drag flex flex-1 items-center gap-2 rounded-xl bg-gray-100 px-3 py-2 transition focus-within:bg-gray-200/70 dark:bg-white/[0.06] dark:focus-within:bg-white/[0.1]">
+        <svg
+          className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.3-4.3" />
+        </svg>
 
-      <input
-        autoFocus
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Search..."
-        className="no-drag flex-1 bg-transparent text-sm text-white/90 placeholder:text-white/40 focus:outline-none"
-      />
+        <input
+          autoFocus
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="검색"
+          className="flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none dark:text-gray-100 dark:placeholder:text-gray-500"
+        />
+      </div>
 
       <button
         onClick={onSettings}
         title="설정"
-        className="no-drag flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-white/50 transition hover:bg-white/10 hover:text-white/90"
+        className="no-drag flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-100"
       >
         <svg
           className="h-4 w-4"
@@ -52,7 +54,7 @@ export default function SearchBar({ value, onChange, onClose, onSettings }: Sear
       <button
         onClick={onClose}
         title="닫기"
-        className="no-drag flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-white/50 transition hover:bg-white/10 hover:text-white/90"
+        className="no-drag flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-100"
       >
         <svg
           className="h-4 w-4"

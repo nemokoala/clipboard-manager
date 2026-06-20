@@ -157,18 +157,25 @@ export default function App() {
   }, [handleCopy, quickCopyModifier, visibleItems]);
 
   return (
-    <div className="m-px flex h-[calc(100%-2px)] flex-col overflow-hidden rounded-[20px] bg-neutral-900/95 text-white/90 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.10)] backdrop-blur-xl">
+    <div
+      className={[
+        "flex h-full flex-col overflow-hidden bg-white text-gray-900 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] dark:bg-ink dark:text-gray-100 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]",
+        // macOS(투명 창)는 CSS 로 둥글린다. Windows(불투명 창)는
+        // OS 라운딩에 맡겨 모서리가 이중으로 보이지 않게 한다.
+        isMacLike() ? "rounded-[20px]" : "rounded-none",
+      ].join(" ")}
+    >
       <SearchBar
         value={query}
         onChange={setQuery}
         onClose={handleClose}
         onSettings={handleSettings}
       />
-      <div className="h-px bg-white/10" />
+      <div className="h-px bg-gray-100 dark:bg-white/[0.08]" />
       <TabBar active={tab} onChange={setTab} />
-      <div className="h-px bg-white/10" />
+      <div className="h-px bg-gray-100 dark:bg-white/[0.08]" />
       <StorageBar usedBytes={totalSize} />
-      <div className="h-px bg-white/10" />
+      <div className="h-px bg-gray-100 dark:bg-white/[0.08]" />
       <HistoryList
         items={visibleItems}
         quickCopyModifier={quickCopyModifier}

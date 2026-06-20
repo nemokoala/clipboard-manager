@@ -16,6 +16,9 @@ export type TabFilter = 'all' | 'text' | 'image' | 'link'
 
 export type QuickCopyModifier = 'primary' | 'alt' | 'shift'
 
+/** 테마 모드: 라이트 / 다크 / 시스템(OS 설정 추종). */
+export type ThemeMode = 'light' | 'dark' | 'system'
+
 /** 메인 프로세스가 반환하는 설정 데이터. */
 export interface SettingsData {
   /** 현재 저장된 전역 토글 단축키 (Electron accelerator 문자열). */
@@ -34,6 +37,10 @@ export interface SettingsData {
   launchAtLogin: boolean
   /** 자동 실행 기본값. */
   defaultLaunchAtLogin: boolean
+  /** 현재 테마 모드. */
+  theme: ThemeMode
+  /** 테마 기본값. */
+  defaultTheme: ThemeMode
 }
 
 /** 단축키 변경 시도 결과. */
@@ -63,6 +70,9 @@ export interface ClipboardAPI {
   setQuickCopyModifier: (modifier: QuickCopyModifier) => Promise<void>
   setHideOnBlur: (hideOnBlur: boolean) => Promise<void>
   setLaunchAtLogin: (launchAtLogin: boolean) => Promise<void>
+  setTheme: (theme: ThemeMode) => Promise<void>
+  onThemeChanged: (callback: (theme: ThemeMode) => void) => void
+  removeThemeChangedListener: () => void
   openSettings: () => Promise<void>
   setRecording: (recording: boolean) => Promise<void>
   closeSelf: () => Promise<void>

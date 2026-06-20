@@ -1,4 +1,11 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, screen } from "electron";
+import {
+  app,
+  BrowserWindow,
+  globalShortcut,
+  ipcMain,
+  nativeTheme,
+  screen,
+} from "electron";
 import path from "node:path";
 import {
   initDb,
@@ -19,6 +26,7 @@ import {
   DEFAULT_LAUNCH_AT_LOGIN,
   DEFAULT_QUICK_COPY_MODIFIER,
   DEFAULT_SHORTCUT,
+  DEFAULT_THEME,
   MAX_MAIN_WINDOW_HEIGHT,
   MAX_MAIN_WINDOW_WIDTH,
   MIN_MAIN_WINDOW_HEIGHT,
@@ -28,12 +36,15 @@ import {
   getMainWindowSize,
   getQuickCopyModifier,
   getShortcut,
+  getTheme,
   setHideOnBlur,
   setLaunchAtLogin,
   setMainWindowSize,
   setQuickCopyModifier,
   setStoredShortcut,
+  setStoredTheme,
   type QuickCopyModifier,
+  type ThemeMode,
 } from "./settings";
 
 // dist-electron/  ← 컴파일된 main + preload (CommonJS, __dirname 사용 가능)
@@ -65,6 +76,26 @@ function keepVisibleOnMacFullscreen(target: BrowserWindow): void {
   target.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 }
 
+/** 현재 설정된 테마가 실제로 다크로 표시되는지 (system이면 OS 설정을 따른다). */
+function isDarkTheme(): boolean {
+  const theme = getTheme();
+  if (theme === "dark") return true;
+  if (theme === "light") return false;
+  return nativeTheme.shouldUseDarkColors;
+}
+
+/** 솔리드 배경 창(설정 창)의 초기 로딩 깜빡임을 줄이기 위한 배경색. */
+function themeWindowBackground(): string {
+  return isDarkTheme() ? "#1B1C1F" : "#FFFFFF";
+}
+
+/** 테마 변경을 모든 창의 렌더러에 전파한다. */
+function broadcastTheme(theme: ThemeMode): void {
+  for (const target of [win, settingsWin, toastWin]) {
+    target?.webContents.send("theme:changed", theme);
+  }
+}
+
 function applyLaunchAtLogin(launchAtLogin: boolean): void {
   app.setLoginItemSettings({
     openAtLogin: launchAtLogin,
@@ -74,6 +105,7 @@ function applyLaunchAtLogin(launchAtLogin: boolean): void {
 
 function createWindow(): void {
   const { width, height } = getMainWindowSize();
+  const isMac = process.platform === "darwin";
 
   win = new BrowserWindow({
     width,
@@ -87,11 +119,17 @@ function createWindow(): void {
     alwaysOnTop: true,
     skipTaskbar: true,
     show: false,
-    // CSS 패널 하나만 실제 창 형태를 만들게 한다.
-    // macOS vibrancy를 transparent 창과 같이 쓰면 네이티브 material edge와
-    // CSS rounded edge가 겹쳐 보여 모서리가 두 겹처럼 보일 수 있다.
-    transparent: true,
-    backgroundColor: "#00000000",
+    // 블러(OS 재질) 없이 단순한 패널로 표시한다.
+    //  - Windows: 불투명 창 + OS 기본 라운딩(roundedCorners).
+    //  - macOS:   투명 창 + CSS 라운딩(패널은 React 쪽에서 불투명 배경으로 그림).
+    // acrylic 을 쓰면 창 열기 스케일 트랜지션과 닫기 시 직각 모서리가 생겨 제거했다.
+    transparent: isMac,
+    backgroundColor: isMac
+      ? "#00000000"
+      : nativeTheme.shouldUseDarkColors
+        ? "#1B1C1F"
+        : "#FFFFFF",
+    roundedCorners: true,
     hasShadow: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -120,7 +158,7 @@ function createWindow(): void {
       if (!getHideOnBlur()) return;
       if (settingsWin?.isVisible()) return;
       if (win && !win.webContents.isDevToolsOpened()) {
-        win.hide();
+        dismissWindow();
       }
     }, 0);
   });
@@ -132,23 +170,46 @@ function createWindow(): void {
   });
 }
 
-/** 오버레이를 토글하고 커서/화면 중앙 근처에 배치한다. */
-function toggleWindow(): void {
+/** 오버레이를 위치시키고 표시한다. */
+function presentWindow(): void {
   if (!win) return;
-  if (win.isVisible()) {
-    win.hide();
-    return;
-  }
   positionWindow();
+  // Windows 불투명 창 배경을 현재 테마에 맞춰 둔다(패널 표시 전 한 프레임 대비).
+  if (process.platform !== "darwin") {
+    win.setBackgroundColor(
+      nativeTheme.shouldUseDarkColors ? "#1B1C1F" : "#FFFFFF"
+    );
+  }
+  // dismissWindow 에서 투명하게 둔 것을 복원한다.
+  win.setOpacity(1);
   win.show();
   win.focus();
 }
 
-function showWindow(): void {
+/**
+ * 오버레이를 숨긴다.
+ * Windows DWM 창 닫기 애니메이션은 창을 직각 비트맵으로 스냅샷해 축소하므로
+ * roundedCorners 가 무시돼 모서리가 잠깐 직각으로 보인다. 숨기기 직전에 창을
+ * 투명하게 만들어 그 직각 닫기 애니메이션이 보이지 않게 한다.
+ */
+function dismissWindow(): void {
   if (!win) return;
-  positionWindow();
-  win.show();
-  win.focus();
+  win.setOpacity(0);
+  win.hide();
+}
+
+/** 오버레이를 토글하고 커서/화면 중앙 근처에 배치한다. */
+function toggleWindow(): void {
+  if (!win) return;
+  if (win.isVisible()) {
+    dismissWindow();
+    return;
+  }
+  presentWindow();
+}
+
+function showWindow(): void {
+  presentWindow();
 }
 
 function createToastWindow(): void {
@@ -277,12 +338,14 @@ function openSettingsWindow(): void {
     modal: false,
     width: 460,
     height: 720,
-    resizable: false,
+    minWidth: 380,
+    minHeight: 480,
+    resizable: true,
     minimizable: false,
     maximizable: false,
     alwaysOnTop: true,
     title: "설정",
-    backgroundColor: "#171717",
+    backgroundColor: themeWindowBackground(),
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -321,7 +384,7 @@ function registerIpc(): void {
     writeToClipboard(content);
     showToast("복사되었습니다.");
   });
-  ipcMain.handle("window:hide", () => win?.hide());
+  ipcMain.handle("window:hide", () => dismissWindow());
 
   // --- 설정 ---
   ipcMain.handle("settings:get", () => ({
@@ -333,6 +396,8 @@ function registerIpc(): void {
     defaultHideOnBlur: DEFAULT_HIDE_ON_BLUR,
     launchAtLogin: getLaunchAtLogin(),
     defaultLaunchAtLogin: DEFAULT_LAUNCH_AT_LOGIN,
+    theme: getTheme(),
+    defaultTheme: DEFAULT_THEME,
   }));
 
   ipcMain.handle("settings:setShortcut", (_e, accelerator: string) => {
@@ -365,6 +430,10 @@ function registerIpc(): void {
   ipcMain.handle("settings:setLaunchAtLogin", (_e, launchAtLogin: boolean) => {
     setLaunchAtLogin(launchAtLogin);
     applyLaunchAtLogin(launchAtLogin);
+  });
+  ipcMain.handle("settings:setTheme", (_e, theme: ThemeMode) => {
+    setStoredTheme(theme);
+    broadcastTheme(theme);
   });
 
   // 새 조합 녹화 중 전역 단축키를 일시 중단한다:
@@ -405,6 +474,11 @@ app.whenReady().then(() => {
       `[main] failed to register global shortcut "${getShortcut()}"`
     );
   }
+
+  // 시스템 테마를 따르는 경우 OS 다크/라이트 전환을 렌더러에 알린다.
+  nativeTheme.on("updated", () => {
+    if (getTheme() === "system") broadcastTheme("system");
+  });
 
   // macOS: 독 아이콘 숨김 — 트레이/오버레이 유틸리티.
   if (process.platform === "darwin") {

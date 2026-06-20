@@ -5,6 +5,9 @@ export const DEFAULT_SHORTCUT = 'CommandOrControl+Shift+V'
 export const DEFAULT_QUICK_COPY_MODIFIER = 'primary'
 export const DEFAULT_HIDE_ON_BLUR = true
 export const DEFAULT_LAUNCH_AT_LOGIN = false
+/** 테마 모드: 라이트 / 다크 / 시스템(OS 설정 추종). */
+export type ThemeMode = 'light' | 'dark' | 'system'
+export const DEFAULT_THEME: ThemeMode = 'system'
 export const DEFAULT_MAIN_WINDOW_WIDTH = 480
 export const DEFAULT_MAIN_WINDOW_HEIGHT = 600
 export const MIN_MAIN_WINDOW_WIDTH = 360
@@ -19,6 +22,7 @@ interface SettingsSchema {
   quickCopyModifier: QuickCopyModifier
   hideOnBlur: boolean
   launchAtLogin: boolean
+  theme: ThemeMode
   mainWindowWidth: number
   mainWindowHeight: number
 }
@@ -35,6 +39,7 @@ function getStore(): Store<SettingsSchema> {
         quickCopyModifier: DEFAULT_QUICK_COPY_MODIFIER,
         hideOnBlur: DEFAULT_HIDE_ON_BLUR,
         launchAtLogin: DEFAULT_LAUNCH_AT_LOGIN,
+        theme: DEFAULT_THEME,
         mainWindowWidth: DEFAULT_MAIN_WINDOW_WIDTH,
         mainWindowHeight: DEFAULT_MAIN_WINDOW_HEIGHT,
       },
@@ -66,6 +71,15 @@ export function getHideOnBlur(): boolean {
 
 export function setHideOnBlur(hideOnBlur: boolean): void {
   getStore().set('hideOnBlur', hideOnBlur)
+}
+
+export function getTheme(): ThemeMode {
+  return getStore().get('theme')
+}
+
+export function setStoredTheme(theme: ThemeMode): void {
+  if (!['light', 'dark', 'system'].includes(theme)) return
+  getStore().set('theme', theme)
 }
 
 export function getLaunchAtLogin(): boolean {

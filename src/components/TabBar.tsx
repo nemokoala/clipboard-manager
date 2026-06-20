@@ -14,7 +14,7 @@ const TABS: { value: TabFilter; label: string }[] = [
 
 export default function TabBar({ active, onChange }: TabBarProps) {
   return (
-    <div className="flex gap-1 px-3 pb-2 mt-2">
+    <div className="mx-3 mb-2 mt-2 flex gap-1 rounded-xl bg-gray-100 p-1 dark:bg-white/[0.06]">
       {TABS.map((tab) => {
         const isActive = tab.value === active;
         return (
@@ -22,10 +22,10 @@ export default function TabBar({ active, onChange }: TabBarProps) {
             key={tab.value}
             onClick={() => onChange(tab.value)}
             className={[
-              "flex-1 rounded-lg py-1.5 text-xs font-medium transition",
+              "flex-1 rounded-lg py-1.5 text-xs font-semibold transition",
               isActive
-                ? "bg-white/15 text-white"
-                : "text-white/50 hover:bg-white/5 hover:text-white/80",
+                ? "bg-white text-gray-900 shadow-sm dark:bg-white/15 dark:text-white"
+                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200",
             ].join(" ")}
           >
             {tab.label}
