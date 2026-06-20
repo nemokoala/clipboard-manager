@@ -10,6 +10,7 @@ interface HistoryListProps {
   items: ClipboardItem[]
   quickCopyModifier: QuickCopyModifier
   onCopy: (item: ClipboardItem) => void
+  onTogglePin: (item: ClipboardItem) => void
   onDelete: (id: number) => void
 }
 
@@ -37,6 +38,7 @@ export default function HistoryList({
   items,
   quickCopyModifier,
   onCopy,
+  onTogglePin,
   onDelete,
 }: HistoryListProps) {
   if (items.length === 0) {
@@ -59,25 +61,36 @@ export default function HistoryList({
     )
   }
 
-  const groups = groupByDay(items)
+  // 빠른 복사 인덱스는 전체 목록(고정 우선) 순서를 따른다.
   const itemIndexes = new Map(items.map((item, index) => [item.id, index]))
+
+  // 고정 항목은 날짜와 무관하게 상단 "고정됨" 그룹으로 모은다.
+  const pinnedItems = items.filter((item) => item.pinned)
+  const normalItems = items.filter((item) => !item.pinned)
+  const groups = groupByDay(normalItems)
+
+  const renderItem = (item: ClipboardItem) => {
+    const index = itemIndexes.get(item.id)
+    return (
+      <HistoryItem
+        key={item.id}
+        item={item}
+        shortcutBadge={index === undefined ? null : formatQuickCopyBadge(quickCopyModifier, index)}
+        onCopy={onCopy}
+        onTogglePin={onTogglePin}
+        onDelete={onDelete}
+      />
+    )
+  }
 
   return (
     <div className="flex-1 overflow-y-auto pb-3">
+      {pinnedItems.length > 0 && (
+        <DateGroup label="고정됨">{pinnedItems.map(renderItem)}</DateGroup>
+      )}
       {groups.map((group) => (
         <DateGroup key={group.key} label={group.label}>
-          {group.items.map((item) => {
-            const index = itemIndexes.get(item.id)
-            return (
-              <HistoryItem
-                key={item.id}
-                item={item}
-                shortcutBadge={index === undefined ? null : formatQuickCopyBadge(quickCopyModifier, index)}
-                onCopy={onCopy}
-                onDelete={onDelete}
-              />
-            )
-          })}
+          {group.items.map(renderItem)}
         </DateGroup>
       ))}
     </div>

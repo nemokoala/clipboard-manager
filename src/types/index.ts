@@ -9,6 +9,8 @@ export interface ClipboardItem {
   size: number
   /** ISO8601 타임스탬프, 예: 2025-06-19T14:30:00.000Z */
   created_at: string
+  /** 즐겨찾기 고정 여부. 고정 항목은 목록 상단에 모이고 자동 정리에서 제외된다. */
+  pinned: boolean
 }
 
 /** UI에서 쓰는 탭 필터 값. */
@@ -41,6 +43,14 @@ export interface SettingsData {
   theme: ThemeMode
   /** 테마 기본값. */
   defaultTheme: ThemeMode
+  /** 자동 정리: 보관 기간(일). 0이면 기간 제한 없음. */
+  retentionDays: number
+  /** 보관 기간 기본값. */
+  defaultRetentionDays: number
+  /** 자동 정리: 최대 보관 개수. 0이면 개수 제한 없음. */
+  maxItems: number
+  /** 최대 보관 개수 기본값. */
+  defaultMaxItems: number
 }
 
 /** 단축키 변경 시도 결과. */
@@ -53,6 +63,7 @@ export interface SetShortcutResult {
 export interface ClipboardAPI {
   getItems: () => Promise<ClipboardItem[]>
   searchItems: (query: string) => Promise<ClipboardItem[]>
+  setPinned: (id: number, pinned: boolean) => Promise<void>
   deleteItem: (id: number) => Promise<void>
   deleteAll: () => Promise<void>
   getTotalSize: () => Promise<number>
@@ -70,6 +81,8 @@ export interface ClipboardAPI {
   setQuickCopyModifier: (modifier: QuickCopyModifier) => Promise<void>
   setHideOnBlur: (hideOnBlur: boolean) => Promise<void>
   setLaunchAtLogin: (launchAtLogin: boolean) => Promise<void>
+  setRetentionDays: (days: number) => Promise<void>
+  setMaxItems: (max: number) => Promise<void>
   setTheme: (theme: ThemeMode) => Promise<void>
   onThemeChanged: (callback: (theme: ThemeMode) => void) => void
   removeThemeChangedListener: () => void

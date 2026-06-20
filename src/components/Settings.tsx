@@ -84,6 +84,21 @@ const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
   { value: 'system', label: '시스템' },
 ]
 
+// 자동 정리 옵션(0 = 제한 없음). 고정한 항목은 정리에서 제외된다.
+const RETENTION_OPTIONS: { value: number; label: string }[] = [
+  { value: 0, label: '무제한' },
+  { value: 7, label: '7일' },
+  { value: 30, label: '30일' },
+  { value: 90, label: '90일' },
+]
+
+const MAX_ITEMS_OPTIONS: { value: number; label: string }[] = [
+  { value: 0, label: '무제한' },
+  { value: 100, label: '100개' },
+  { value: 500, label: '500개' },
+  { value: 1000, label: '1000개' },
+]
+
 export default function Settings() {
   // 모든 설정은 변경 즉시 적용·저장한다(저장 버튼 없음).
   const [shortcut, setShortcut] = useState('')
@@ -98,6 +113,10 @@ export default function Settings() {
   const [defaultLaunchAtLogin, setDefaultLaunchAtLogin] = useState(false)
   const [theme, setThemeState] = useState<ThemeMode>('system')
   const [defaultTheme, setDefaultTheme] = useState<ThemeMode>('system')
+  const [retentionDays, setRetentionDays] = useState(0)
+  const [defaultRetentionDays, setDefaultRetentionDays] = useState(0)
+  const [maxItems, setMaxItems] = useState(0)
+  const [defaultMaxItems, setDefaultMaxItems] = useState(0)
   const [recording, setRecording] = useState(false)
   // 단축키 등록 실패 시에만 표시하는 에러 메시지.
   const [error, setError] = useState('')
@@ -114,6 +133,10 @@ export default function Settings() {
       setDefaultLaunchAtLogin(s.defaultLaunchAtLogin)
       setThemeState(s.theme)
       setDefaultTheme(s.defaultTheme)
+      setRetentionDays(s.retentionDays)
+      setDefaultRetentionDays(s.defaultRetentionDays)
+      setMaxItems(s.maxItems)
+      setDefaultMaxItems(s.defaultMaxItems)
     })
   }, [])
 
@@ -138,6 +161,16 @@ export default function Settings() {
     const next = !launchAtLogin
     setLaunchAtLogin(next)
     void window.clipboardAPI.setLaunchAtLogin(next)
+  }
+
+  const handleSelectRetention = (days: number) => {
+    setRetentionDays(days)
+    void window.clipboardAPI.setRetentionDays(days)
+  }
+
+  const handleSelectMaxItems = (max: number) => {
+    setMaxItems(max)
+    void window.clipboardAPI.setMaxItems(max)
   }
 
   /** 단축키를 즉시 등록한다 — 실패하면 이전 값을 유지하고 에러를 표시. */
@@ -190,6 +223,8 @@ export default function Settings() {
     if (hideOnBlur !== defaultHideOnBlur) handleToggleHideOnBlur()
     if (launchAtLogin !== defaultLaunchAtLogin) handleToggleLaunchAtLogin()
     handleSelectTheme(defaultTheme)
+    handleSelectRetention(defaultRetentionDays)
+    handleSelectMaxItems(defaultMaxItems)
     setError('')
   }
 
@@ -336,6 +371,56 @@ export default function Settings() {
               />
             </span>
           </button>
+        </div>
+
+        <div className="mt-6 pb-1">
+          <label className="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-200">저장 관리</label>
+
+          <p className="mb-2 text-[12px] font-medium text-gray-600 dark:text-gray-300">보관 기간</p>
+          <div className="grid grid-cols-4 gap-2">
+            {RETENTION_OPTIONS.map((option) => {
+              const active = retentionDays === option.value
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => handleSelectRetention(option.value)}
+                  className={[
+                    'rounded-lg border px-2 py-2 text-sm font-semibold transition',
+                    active
+                      ? 'border-toss-blue/60 bg-toss-blue/10 text-toss-blue'
+                      : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-gray-100',
+                  ].join(' ')}
+                >
+                  {option.label}
+                </button>
+              )
+            })}
+          </div>
+
+          <p className="mb-2 mt-4 text-[12px] font-medium text-gray-600 dark:text-gray-300">최대 항목 수</p>
+          <div className="grid grid-cols-4 gap-2">
+            {MAX_ITEMS_OPTIONS.map((option) => {
+              const active = maxItems === option.value
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => handleSelectMaxItems(option.value)}
+                  className={[
+                    'rounded-lg border px-2 py-2 text-sm font-semibold transition',
+                    active
+                      ? 'border-toss-blue/60 bg-toss-blue/10 text-toss-blue'
+                      : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-gray-100',
+                  ].join(' ')}
+                >
+                  {option.label}
+                </button>
+              )
+            })}
+          </div>
+
+          <p className="mt-2 text-[11px] text-gray-400 dark:text-gray-500">
+            기준을 넘은 오래된 항목을 자동으로 삭제합니다. 고정(📌)한 항목은 삭제되지 않습니다.
+          </p>
         </div>
       </div>
 

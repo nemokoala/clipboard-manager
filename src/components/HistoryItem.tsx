@@ -5,6 +5,7 @@ interface HistoryItemProps {
   item: ClipboardItem
   shortcutBadge?: string | null
   onCopy: (item: ClipboardItem) => void
+  onTogglePin: (item: ClipboardItem) => void
   onDelete: (id: number) => void
 }
 
@@ -12,12 +13,19 @@ export default function HistoryItem({
   item,
   shortcutBadge,
   onCopy,
+  onTogglePin,
   onDelete,
 }: HistoryItemProps) {
   const handleDelete = (e: React.MouseEvent) => {
     // 부모 카드의 클릭-복사가 실행되지 않도록 한다.
     e.stopPropagation()
     onDelete(item.id)
+  }
+
+  const handleTogglePin = (e: React.MouseEvent) => {
+    // 카드 클릭-복사가 실행되지 않도록 한다.
+    e.stopPropagation()
+    onTogglePin(item)
   }
 
   return (
@@ -62,6 +70,32 @@ export default function HistoryItem({
           {shortcutBadge}
         </div>
       )}
+
+      {/* 고정 버튼 — 고정된 항목은 항상 표시, 그 외엔 hover 시 표시 */}
+      <button
+        onClick={handleTogglePin}
+        title={item.pinned ? '고정 해제' : '고정'}
+        className={[
+          'absolute right-9 top-2 flex h-6 w-6 items-center justify-center rounded-lg transition',
+          item.pinned
+            ? 'text-toss-blue opacity-100 hover:bg-gray-200 dark:hover:bg-white/10'
+            : 'text-gray-400 opacity-0 hover:bg-gray-200 hover:text-toss-blue group-hover:opacity-100 dark:text-white/40 dark:hover:bg-white/10',
+        ].join(' ')}
+      >
+        <svg
+          className="h-4 w-4"
+          viewBox="0 0 24 24"
+          fill={item.pinned ? 'currentColor' : 'none'}
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          {/* 압정 모양 아이콘 */}
+          <path d="M12 17v5" />
+          <path d="M9 10.76V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v5.76a2 2 0 0 0 .76 1.57l1.49 1.18A1 1 0 0 1 17.62 17H6.38a1 1 0 0 1-.63-1.49l1.49-1.18A2 2 0 0 0 9 10.76Z" />
+        </svg>
+      </button>
 
       {/* 삭제 버튼 — hover 시 표시 */}
       <button

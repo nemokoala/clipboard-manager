@@ -5,6 +5,9 @@ export const DEFAULT_SHORTCUT = 'CommandOrControl+Shift+V'
 export const DEFAULT_QUICK_COPY_MODIFIER = 'primary'
 export const DEFAULT_HIDE_ON_BLUR = true
 export const DEFAULT_LAUNCH_AT_LOGIN = false
+/** 자동 정리 기본값: 0 = 제한 없음(무제한 보관). */
+export const DEFAULT_RETENTION_DAYS = 0
+export const DEFAULT_MAX_ITEMS = 0
 /** 테마 모드: 라이트 / 다크 / 시스템(OS 설정 추종). */
 export type ThemeMode = 'light' | 'dark' | 'system'
 export const DEFAULT_THEME: ThemeMode = 'system'
@@ -23,6 +26,8 @@ interface SettingsSchema {
   hideOnBlur: boolean
   launchAtLogin: boolean
   theme: ThemeMode
+  retentionDays: number
+  maxItems: number
   mainWindowWidth: number
   mainWindowHeight: number
 }
@@ -40,6 +45,8 @@ function getStore(): Store<SettingsSchema> {
         hideOnBlur: DEFAULT_HIDE_ON_BLUR,
         launchAtLogin: DEFAULT_LAUNCH_AT_LOGIN,
         theme: DEFAULT_THEME,
+        retentionDays: DEFAULT_RETENTION_DAYS,
+        maxItems: DEFAULT_MAX_ITEMS,
         mainWindowWidth: DEFAULT_MAIN_WINDOW_WIDTH,
         mainWindowHeight: DEFAULT_MAIN_WINDOW_HEIGHT,
       },
@@ -88,6 +95,28 @@ export function getLaunchAtLogin(): boolean {
 
 export function setLaunchAtLogin(launchAtLogin: boolean): void {
   getStore().set('launchAtLogin', launchAtLogin)
+}
+
+/** 음수/비유한 값을 0(제한 없음)으로 정규화한다. */
+function normalizeLimit(value: number): number {
+  if (!Number.isFinite(value) || value < 0) return 0
+  return Math.floor(value)
+}
+
+export function getRetentionDays(): number {
+  return normalizeLimit(getStore().get('retentionDays'))
+}
+
+export function setRetentionDays(days: number): void {
+  getStore().set('retentionDays', normalizeLimit(days))
+}
+
+export function getMaxItems(): number {
+  return normalizeLimit(getStore().get('maxItems'))
+}
+
+export function setMaxItems(max: number): void {
+  getStore().set('maxItems', normalizeLimit(max))
 }
 
 function clampSize(value: number, min: number, max: number): number {

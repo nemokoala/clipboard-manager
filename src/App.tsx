@@ -91,6 +91,14 @@ export default function App() {
     await window.clipboardAPI.hideWindow();
   }, []);
 
+  const handleTogglePin = useCallback(
+    async (item: ClipboardItem) => {
+      await window.clipboardAPI.setPinned(item.id, !item.pinned);
+      await loadItems();
+    },
+    [loadItems]
+  );
+
   const handleDelete = useCallback(
     async (id: number) => {
       await window.clipboardAPI.deleteItem(id);
@@ -180,6 +188,7 @@ export default function App() {
         items={visibleItems}
         quickCopyModifier={quickCopyModifier}
         onCopy={handleCopy}
+        onTogglePin={handleTogglePin}
         onDelete={handleDelete}
       />
     </div>

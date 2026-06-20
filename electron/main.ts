@@ -11,9 +11,11 @@ import {
   initDb,
   getAllItems,
   searchItems,
+  setPinned,
   deleteItem,
   deleteAll,
   getTotalSize,
+  purgeOldItems,
 } from "./db";
 import {
   startClipboardWatcher,
@@ -24,7 +26,9 @@ import { createTray, destroyTray, broadcastCleared } from "./tray";
 import {
   DEFAULT_HIDE_ON_BLUR,
   DEFAULT_LAUNCH_AT_LOGIN,
+  DEFAULT_MAX_ITEMS,
   DEFAULT_QUICK_COPY_MODIFIER,
+  DEFAULT_RETENTION_DAYS,
   DEFAULT_SHORTCUT,
   DEFAULT_THEME,
   MAX_MAIN_WINDOW_HEIGHT,
@@ -34,13 +38,17 @@ import {
   getHideOnBlur,
   getLaunchAtLogin,
   getMainWindowSize,
+  getMaxItems,
   getQuickCopyModifier,
+  getRetentionDays,
   getShortcut,
   getTheme,
   setHideOnBlur,
   setLaunchAtLogin,
   setMainWindowSize,
+  setMaxItems,
   setQuickCopyModifier,
+  setRetentionDays,
   setStoredShortcut,
   setStoredTheme,
   type QuickCopyModifier,
@@ -374,9 +382,21 @@ function openSettingsWindow(): void {
   });
 }
 
+/**
+ * 현재 보관 정책으로 오래/초과 항목을 정리한다.
+ * 무언가 삭제되면 true 를 반환한다(호출자가 UI 갱신 여부 판단).
+ */
+function runPurge(): boolean {
+  const deleted = purgeOldItems(getRetentionDays(), getMaxItems());
+  return deleted > 0;
+}
+
 function registerIpc(): void {
   ipcMain.handle("db:getAll", () => getAllItems());
   ipcMain.handle("db:search", (_e, query: string) => searchItems(query));
+  ipcMain.handle("db:setPinned", (_e, id: number, pinned: boolean) =>
+    setPinned(id, pinned)
+  );
   ipcMain.handle("db:delete", (_e, id: number) => deleteItem(id));
   ipcMain.handle("db:deleteAll", () => deleteAll());
   ipcMain.handle("db:totalSize", () => getTotalSize());
@@ -398,6 +418,10 @@ function registerIpc(): void {
     defaultLaunchAtLogin: DEFAULT_LAUNCH_AT_LOGIN,
     theme: getTheme(),
     defaultTheme: DEFAULT_THEME,
+    retentionDays: getRetentionDays(),
+    defaultRetentionDays: DEFAULT_RETENTION_DAYS,
+    maxItems: getMaxItems(),
+    defaultMaxItems: DEFAULT_MAX_ITEMS,
   }));
 
   ipcMain.handle("settings:setShortcut", (_e, accelerator: string) => {
@@ -436,6 +460,16 @@ function registerIpc(): void {
     broadcastTheme(theme);
   });
 
+  // 보관 정책 변경 → 즉시 정리하고, 삭제분이 있으면 오버레이 목록을 갱신한다.
+  ipcMain.handle("settings:setRetentionDays", (_e, days: number) => {
+    setRetentionDays(days);
+    if (runPurge()) broadcastCleared();
+  });
+  ipcMain.handle("settings:setMaxItems", (_e, max: number) => {
+    setMaxItems(max);
+    if (runPurge()) broadcastCleared();
+  });
+
   // 새 조합 녹화 중 전역 단축키를 일시 중단한다:
   // (a) 오버레이가 뜨지 않게 하고 (b) 렌더러까지 입력이 전달되게 한다.
   ipcMain.handle("settings:setRecording", (_e, recording: boolean) => {
@@ -450,6 +484,8 @@ function registerIpc(): void {
 
 app.whenReady().then(() => {
   initDb();
+  // 시작 시 보관 정책으로 한 번 정리한다(앱이 꺼져 있던 동안 쌓인 것 정리).
+  runPurge();
   applyLaunchAtLogin(getLaunchAtLogin());
   registerIpc();
   createWindow();
@@ -463,6 +499,8 @@ app.whenReady().then(() => {
 
   // 실시간 갱신: 캡처된 항목을 렌더러로 push.
   startClipboardWatcher((item) => {
+    // 새 항목이 들어올 때마다 최대 개수 초과분을 정리한다(고정 항목 제외).
+    runPurge();
     win?.webContents.send("clipboard:new", item);
     showToast("클립보드에 저장되었습니다.");
   });

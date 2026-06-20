@@ -13,6 +13,9 @@ const clipboardAPI = {
   searchItems: (query: string): Promise<ClipboardItem[]> =>
     ipcRenderer.invoke('db:search', query),
 
+  setPinned: (id: number, pinned: boolean): Promise<void> =>
+    ipcRenderer.invoke('db:setPinned', id, pinned),
+
   deleteItem: (id: number): Promise<void> => ipcRenderer.invoke('db:delete', id),
 
   deleteAll: (): Promise<void> => ipcRenderer.invoke('db:deleteAll'),
@@ -64,6 +67,12 @@ const clipboardAPI = {
 
   setLaunchAtLogin: (launchAtLogin: boolean): Promise<void> =>
     ipcRenderer.invoke('settings:setLaunchAtLogin', launchAtLogin),
+
+  setRetentionDays: (days: number): Promise<void> =>
+    ipcRenderer.invoke('settings:setRetentionDays', days),
+
+  setMaxItems: (max: number): Promise<void> =>
+    ipcRenderer.invoke('settings:setMaxItems', max),
 
   setTheme: (theme: ThemeMode): Promise<void> =>
     ipcRenderer.invoke('settings:setTheme', theme),
