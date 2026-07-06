@@ -15,10 +15,9 @@
 
 ![오버레이 메인 창](docs/screenshots/overlay.png)
 
-<p align="center">
-  <img alt="설정 창" src="docs/screenshots/settings.png" width="49%">
-  <img alt="라이트/다크 테마" src="docs/screenshots/light-dark.png" width="49%">
-</p>
+![설정 창](docs/screenshots/settings.png)
+
+![라이트/다크 테마](docs/screenshots/light-dark.png)
 
 ## ✨ 기능
 
