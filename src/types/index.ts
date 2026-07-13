@@ -1,3 +1,5 @@
+import type { ClipboardAPI } from '../../electron/preload'
+
 export type ClipboardType = 'text' | 'image' | 'link'
 
 export interface ClipboardItem {
@@ -16,40 +18,41 @@ export interface ClipboardItem {
 /** UI에서 쓰는 탭 필터 값. */
 export type TabFilter = 'all' | 'text' | 'image' | 'link'
 
+/** 저장소 현황(검색/탭 필터와 무관한 DB 전체 기준). */
+export interface StorageStats {
+  itemCount: number
+  totalBytes: number
+}
+
+/** 숫자 빠른 복사에 사용할 보조키. */
 export type QuickCopyModifier = 'primary' | 'alt' | 'shift'
 
 /** 테마 모드: 라이트 / 다크 / 시스템(OS 설정 추종). */
 export type ThemeMode = 'light' | 'dark' | 'system'
 
-/** 메인 프로세스가 반환하는 설정 데이터. */
+/**
+ * 메인 프로세스가 반환하는 설정 데이터.
+ * 각 항목은 현재 값과 내장 기본값("기본값으로" 버튼용)을 함께 담는다.
+ */
 export interface SettingsData {
-  /** 현재 저장된 전역 토글 단축키 (Electron accelerator 문자열). */
+  /** 전역 토글 단축키 (Electron accelerator 문자열). */
   shortcut: string
-  /** "기본값으로" 버튼용 내장 기본값. */
   defaultShortcut: string
-  /** 숫자 빠른 복사에 사용할 보조키. */
   quickCopyModifier: QuickCopyModifier
-  /** 숫자 빠른 복사 보조키 기본값. */
   defaultQuickCopyModifier: QuickCopyModifier
-  /** 포커스를 잃었을 때 메인 창을 자동으로 숨길지 여부. */
+  /** 포커스를 잃었을 때 오버레이를 자동으로 숨길지 여부. */
   hideOnBlur: boolean
-  /** 자동 숨김 기본값. */
   defaultHideOnBlur: boolean
   /** OS 로그인 시 앱을 자동 실행할지 여부. */
   launchAtLogin: boolean
-  /** 자동 실행 기본값. */
   defaultLaunchAtLogin: boolean
-  /** 현재 테마 모드. */
   theme: ThemeMode
-  /** 테마 기본값. */
   defaultTheme: ThemeMode
   /** 자동 정리: 보관 기간(일). 0이면 기간 제한 없음. */
   retentionDays: number
-  /** 보관 기간 기본값. */
   defaultRetentionDays: number
   /** 자동 정리: 최대 보관 개수. 0이면 개수 제한 없음. */
   maxItems: number
-  /** 최대 보관 개수 기본값. */
   defaultMaxItems: number
 }
 
@@ -59,38 +62,8 @@ export interface SetShortcutResult {
   error?: string
 }
 
-/** preload가 `window.clipboardAPI`에 노출하는 API 형태. */
-export interface ClipboardAPI {
-  getItems: () => Promise<ClipboardItem[]>
-  searchItems: (query: string) => Promise<ClipboardItem[]>
-  setPinned: (id: number, pinned: boolean) => Promise<void>
-  deleteItem: (id: number) => Promise<void>
-  deleteAll: () => Promise<void>
-  getTotalSize: () => Promise<number>
-  copyToClipboard: (content: string) => Promise<void>
-  hideWindow: () => Promise<void>
-  onNewItem: (callback: (item: ClipboardItem) => void) => void
-  removeNewItemListener: () => void
-  onCleared: (callback: () => void) => void
-  removeClearedListener: () => void
-  onToast: (callback: (message: string) => void) => void
-  removeToastListener: () => void
-  // 설정
-  getSettings: () => Promise<SettingsData>
-  setShortcut: (accelerator: string) => Promise<SetShortcutResult>
-  setQuickCopyModifier: (modifier: QuickCopyModifier) => Promise<void>
-  setHideOnBlur: (hideOnBlur: boolean) => Promise<void>
-  setLaunchAtLogin: (launchAtLogin: boolean) => Promise<void>
-  setRetentionDays: (days: number) => Promise<void>
-  setMaxItems: (max: number) => Promise<void>
-  setTheme: (theme: ThemeMode) => Promise<void>
-  onThemeChanged: (callback: (theme: ThemeMode) => void) => void
-  removeThemeChangedListener: () => void
-  openSettings: () => Promise<void>
-  setRecording: (recording: boolean) => Promise<void>
-  closeSelf: () => Promise<void>
-}
-
+// preload 가 실제로 노출하는 객체에서 타입을 파생시킨다(`typeof clipboardAPI`).
+// 여기서 인터페이스를 손으로 다시 적으면 preload 와 조용히 어긋날 수 있다.
 declare global {
   interface Window {
     clipboardAPI: ClipboardAPI

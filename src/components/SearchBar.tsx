@@ -5,7 +5,12 @@ interface SearchBarProps {
   onSettings: () => void
 }
 
-export default function SearchBar({ value, onChange, onClose, onSettings }: SearchBarProps) {
+export default function SearchBar({
+  value,
+  onChange,
+  onClose,
+  onSettings,
+}: SearchBarProps) {
   return (
     <div className="drag-region flex items-center gap-2 px-3 py-3">
       <div className="no-drag flex flex-1 items-center gap-2 rounded-xl bg-gray-100 px-3 py-2 transition focus-within:bg-gray-200/70 dark:bg-white/[0.06] dark:focus-within:bg-white/[0.1]">

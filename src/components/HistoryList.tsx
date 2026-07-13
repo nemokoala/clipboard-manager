@@ -1,10 +1,8 @@
 import type { ClipboardItem, QuickCopyModifier } from '../types'
+import { quickCopyBadge } from '../utils/accelerator'
 import { groupByDay } from '../utils/format'
-import { isMacLike } from '../utils/platform'
 import DateGroup from './DateGroup'
 import HistoryItem from './HistoryItem'
-
-const IS_MAC = isMacLike()
 
 interface HistoryListProps {
   items: ClipboardItem[]
@@ -12,26 +10,6 @@ interface HistoryListProps {
   onCopy: (item: ClipboardItem) => void
   onTogglePin: (item: ClipboardItem) => void
   onDelete: (id: number) => void
-}
-
-function formatQuickCopyBadge(modifier: QuickCopyModifier, index: number): string | null {
-  if (index > 9) return null
-
-  const modifierLabel =
-    modifier === 'primary'
-      ? IS_MAC
-        ? '⌘'
-        : 'Ctrl'
-      : modifier === 'alt'
-        ? IS_MAC
-          ? '⌥'
-          : 'Alt'
-        : IS_MAC
-          ? '⇧'
-          : 'Shift'
-  const numberLabel = index === 9 ? '0' : String(index + 1)
-
-  return `${modifierLabel} ${numberLabel}`
 }
 
 export default function HistoryList({
@@ -75,7 +53,9 @@ export default function HistoryList({
       <HistoryItem
         key={item.id}
         item={item}
-        shortcutBadge={index === undefined ? null : formatQuickCopyBadge(quickCopyModifier, index)}
+        shortcutBadge={
+          index === undefined ? null : quickCopyBadge(quickCopyModifier, index)
+        }
         onCopy={onCopy}
         onTogglePin={onTogglePin}
         onDelete={onDelete}

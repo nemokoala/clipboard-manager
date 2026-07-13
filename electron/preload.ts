@@ -4,6 +4,7 @@ import type {
   QuickCopyModifier,
   SettingsData,
   SetShortcutResult,
+  StorageStats,
   ThemeMode,
 } from '../src/types'
 
@@ -16,11 +17,12 @@ const clipboardAPI = {
   setPinned: (id: number, pinned: boolean): Promise<void> =>
     ipcRenderer.invoke('db:setPinned', id, pinned),
 
-  deleteItem: (id: number): Promise<void> => ipcRenderer.invoke('db:delete', id),
+  deleteItem: (id: number): Promise<void> =>
+    ipcRenderer.invoke('db:delete', id),
 
   deleteAll: (): Promise<void> => ipcRenderer.invoke('db:deleteAll'),
 
-  getTotalSize: (): Promise<number> => ipcRenderer.invoke('db:totalSize'),
+  getStorageStats: (): Promise<StorageStats> => ipcRenderer.invoke('db:stats'),
 
   copyToClipboard: (content: string): Promise<void> =>
     ipcRenderer.invoke('clipboard:copy', content),
@@ -29,7 +31,9 @@ const clipboardAPI = {
   hideWindow: (): Promise<void> => ipcRenderer.invoke('window:hide'),
 
   onNewItem: (callback: (item: ClipboardItem) => void): void => {
-    ipcRenderer.on('clipboard:new', (_event, item: ClipboardItem) => callback(item))
+    ipcRenderer.on('clipboard:new', (_event, item: ClipboardItem) =>
+      callback(item),
+    )
   },
 
   removeNewItemListener: (): void => {
@@ -79,7 +83,9 @@ const clipboardAPI = {
 
   /** 다른 창에서 테마가 바뀌면(또는 시스템 테마 전환) 호출된다. */
   onThemeChanged: (callback: (theme: ThemeMode) => void): void => {
-    ipcRenderer.on('theme:changed', (_event, theme: ThemeMode) => callback(theme))
+    ipcRenderer.on('theme:changed', (_event, theme: ThemeMode) =>
+      callback(theme),
+    )
   },
 
   removeThemeChangedListener: (): void => {

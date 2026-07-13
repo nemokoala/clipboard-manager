@@ -54,7 +54,9 @@ export default function HistoryItem({
             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
           </svg>
-          <span className="truncate text-sm font-medium text-toss-blue">{item.content}</span>
+          <span className="truncate text-sm font-medium text-toss-blue">
+            {item.content}
+          </span>
         </div>
       ) : (
         <p className="line-clamp-3 whitespace-pre-wrap break-words pr-16 text-sm text-gray-800 dark:text-gray-100">
@@ -63,7 +65,9 @@ export default function HistoryItem({
       )}
 
       {/* 하단: 시간 */}
-      <div className="mt-2 pr-16 text-[11px] text-gray-500 dark:text-gray-500">{formatTime(item.created_at)}</div>
+      <div className="mt-2 pr-16 text-[11px] text-gray-500 dark:text-gray-500">
+        {formatTime(item.created_at)}
+      </div>
 
       {shortcutBadge && (
         <div className="pointer-events-none absolute bottom-2 right-2 rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium leading-4 text-gray-400 dark:border-white/10 dark:bg-black/20 dark:text-white/45">

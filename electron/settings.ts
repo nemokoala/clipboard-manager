@@ -1,15 +1,14 @@
 import Store from 'electron-store'
+import type { QuickCopyModifier, ThemeMode } from '../src/types'
 
 /** 오버레이 토글용 기본 전역 단축키. */
 export const DEFAULT_SHORTCUT = 'CommandOrControl+Shift+V'
-export const DEFAULT_QUICK_COPY_MODIFIER = 'primary'
+export const DEFAULT_QUICK_COPY_MODIFIER: QuickCopyModifier = 'primary'
 export const DEFAULT_HIDE_ON_BLUR = true
 export const DEFAULT_LAUNCH_AT_LOGIN = false
 /** 자동 정리 기본값: 0 = 제한 없음(무제한 보관). */
 export const DEFAULT_RETENTION_DAYS = 0
 export const DEFAULT_MAX_ITEMS = 0
-/** 테마 모드: 라이트 / 다크 / 시스템(OS 설정 추종). */
-export type ThemeMode = 'light' | 'dark' | 'system'
 export const DEFAULT_THEME: ThemeMode = 'system'
 export const DEFAULT_MAIN_WINDOW_WIDTH = 480
 export const DEFAULT_MAIN_WINDOW_HEIGHT = 600
@@ -18,7 +17,9 @@ export const MAX_MAIN_WINDOW_WIDTH = 760
 export const MIN_MAIN_WINDOW_HEIGHT = 360
 export const MAX_MAIN_WINDOW_HEIGHT = 900
 
-export type QuickCopyModifier = 'primary' | 'alt' | 'shift'
+// 렌더러에서 넘어온 값이 허용된 리터럴인지 검증할 때 쓴다.
+const QUICK_COPY_MODIFIERS: QuickCopyModifier[] = ['primary', 'alt', 'shift']
+const THEME_MODES: ThemeMode[] = ['light', 'dark', 'system']
 
 interface SettingsSchema {
   shortcut: string
@@ -68,7 +69,7 @@ export function getQuickCopyModifier(): QuickCopyModifier {
 }
 
 export function setQuickCopyModifier(modifier: QuickCopyModifier): void {
-  if (!['primary', 'alt', 'shift'].includes(modifier)) return
+  if (!QUICK_COPY_MODIFIERS.includes(modifier)) return
   getStore().set('quickCopyModifier', modifier)
 }
 
@@ -85,7 +86,7 @@ export function getTheme(): ThemeMode {
 }
 
 export function setStoredTheme(theme: ThemeMode): void {
-  if (!['light', 'dark', 'system'].includes(theme)) return
+  if (!THEME_MODES.includes(theme)) return
   getStore().set('theme', theme)
 }
 

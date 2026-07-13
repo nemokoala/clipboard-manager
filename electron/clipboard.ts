@@ -1,6 +1,7 @@
 import { clipboard, nativeImage } from 'electron'
+import { classifyText } from './classify'
 import { insertItem } from './db'
-import type { ClipboardItem, ClipboardType } from '../src/types'
+import type { ClipboardItem } from '../src/types'
 
 const POLL_INTERVAL = 500 // 밀리초
 
@@ -10,26 +11,21 @@ let timer: NodeJS.Timeout | null = null
 let lastText = ''
 let lastImageHash = ''
 
-/** 텍스트가 속할 분류를 결정한다. */
-function classifyText(text: string): ClipboardType {
-  const trimmed = text.trim()
-  if (/^https?:\/\//i.test(trimmed)) {
-    return 'link'
-  }
-  return 'text'
-}
-
 /**
  * 시스템 클립보드를 폴링한다. 내용이 바뀔 때마다 저장하고
  * `onNewItem`을 호출해 UI가 실시간으로 갱신되게 한다.
  */
-export function startClipboardWatcher(onNewItem: (item: ClipboardItem) => void): void {
+export function startClipboardWatcher(
+  onNewItem: (item: ClipboardItem) => void,
+): void {
   if (timer) return
 
   // 첫 tick에서 즉시 재캡처하지 않도록 현재 클립보드로 baseline을 설정한다.
   lastText = clipboard.readText()
   const seedImage = clipboard.readImage()
-  lastImageHash = seedImage.isEmpty() ? '' : seedImage.toPNG().toString('base64')
+  lastImageHash = seedImage.isEmpty()
+    ? ''
+    : seedImage.toPNG().toString('base64')
 
   timer = setInterval(() => {
     try {
