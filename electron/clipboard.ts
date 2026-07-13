@@ -1,6 +1,7 @@
 import { clipboard, nativeImage } from 'electron'
 import { classifyText } from './classify'
 import { insertItem } from './db'
+import { makeThumbnail } from './thumbnail'
 import type { ClipboardItem } from '../src/types'
 
 const POLL_INTERVAL = 500 // 밀리초
@@ -49,7 +50,13 @@ function pollOnce(onNewItem: (item: ClipboardItem) => void): void {
       lastText = clipboard.readText()
 
       const content = `data:image/png;base64,${pngBase64}`
-      const item = insertItem('image', content)
+      // 목록용 축소본을 지금 만들어 둔다. `image` 는 이미 디코딩된 비트맵이라
+      // 여기서 줄이는 게 가장 싸고, 이후 렌더러는 원본을 만질 일이 없다.
+      const item = insertItem(
+        'image',
+        content,
+        makeThumbnail(image) ?? undefined,
+      )
       onNewItem(item)
     }
     return

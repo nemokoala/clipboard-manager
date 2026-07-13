@@ -1,11 +1,12 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import type { QuickCopyModifier, ThemeMode } from '../src/types'
-import { broadcastCleared, broadcastTheme } from './broadcast'
+import { broadcastRefresh, broadcastTheme } from './broadcast'
 import { writeToClipboard } from './clipboard'
 import {
   deleteAll,
   deleteItem,
   getAllItems,
+  getContentById,
   getStorageStats,
   searchItems,
   setPinned,
@@ -63,7 +64,11 @@ function registerDbHandlers(): void {
 }
 
 function registerWindowHandlers(): void {
-  ipcMain.handle('clipboard:copy', (_e, content: string) => {
+  // 렌더러는 목록에 썸네일만 받으므로 원본을 되돌려 보낼 수 없다.
+  // id 로 받아 여기서 DB 의 원본을 읽어 클립보드에 쓴다.
+  ipcMain.handle('clipboard:copy', (_e, id: number) => {
+    const content = getContentById(id)
+    if (content === null) return
     writeToClipboard(content)
     showToast('복사되었습니다.')
   })
@@ -128,12 +133,12 @@ function registerSettingsHandlers(): void {
   // 보관 정책이 바뀌면 즉시 정리하고, 삭제분이 있으면 목록을 갱신시킨다.
   ipcMain.handle('settings:setRetentionDays', (_e, days: number) => {
     setRetentionDays(days)
-    if (runPurge()) broadcastCleared()
+    if (runPurge()) broadcastRefresh()
   })
 
   ipcMain.handle('settings:setMaxItems', (_e, max: number) => {
     setMaxItems(max)
-    if (runPurge()) broadcastCleared()
+    if (runPurge()) broadcastRefresh()
   })
 
   // 새 조합을 녹화하는 동안 전역 단축키를 잠시 내려둔다.

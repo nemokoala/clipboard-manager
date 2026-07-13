@@ -5,9 +5,16 @@ export type ClipboardType = 'text' | 'image' | 'link'
 export interface ClipboardItem {
   id: number
   type: ClipboardType
-  /** 일반 텍스트, URL, 또는 `data:image/png;base64,...` 문자열. */
-  content: string
-  /** `content`의 바이트 크기. */
+  /**
+   * 목록에 표시할 내용.
+   * - text / link: 원문
+   * - image: 썸네일 data URL
+   *
+   * 이미지 원본은 렌더러로 오지 않는다(수 MB 짜리 base64 다). 복사할 때는 `id` 만
+   * 넘기고 메인 프로세스가 DB 에서 원본을 읽어 클립보드에 쓴다.
+   */
+  preview: string
+  /** 원본 내용의 바이트 크기(썸네일이 아니라). */
   size: number
   /** ISO8601 타임스탬프, 예: 2025-06-19T14:30:00.000Z */
   created_at: string

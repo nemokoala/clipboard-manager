@@ -65,19 +65,20 @@ export default function App() {
       loadItems()
       refreshStats()
     })
-    // 트레이 "전체 삭제"로 저장소 비움 — 빈 목록으로 갱신.
-    window.clipboardAPI.onCleared(() => {
+    // 전체 삭제 / 자동 정리 / 썸네일 백필 완료 — 목록을 다시 읽는다.
+    window.clipboardAPI.onRefresh(() => {
       loadItems()
       refreshStats()
     })
     return () => {
       window.clipboardAPI.removeNewItemListener()
-      window.clipboardAPI.removeClearedListener()
+      window.clipboardAPI.removeRefreshListener()
     }
   }, [loadItems, refreshStats])
 
   const handleCopy = useCallback(async (item: ClipboardItem) => {
-    await window.clipboardAPI.copyToClipboard(item.content)
+    // 내용이 아니라 id 를 넘긴다 — 이미지 원본은 메인 프로세스에만 있다.
+    await window.clipboardAPI.copyToClipboard(item.id)
     await window.clipboardAPI.hideWindow()
   }, [])
 

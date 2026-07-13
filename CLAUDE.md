@@ -52,10 +52,12 @@ electron/   메인 프로세스 (CommonJS 로 빌드)
   db.ts         better-sqlite3 CRUD + purgeOldItems (Electron 비의존)
   clipboard.ts  클립보드 폴링
   classify.ts   text / link 분류 (순수 함수)
+  thumbnail.ts  이미지 축소본 생성 (NativeImage → PNG data URL)
+  backfill.ts   기존 이미지의 썸네일을 배치로 채우는 백그라운드 작업
   settings.ts   electron-store 기반 설정 저장
   shortcuts.ts  전역 단축키 등록 / 해제 / 복원
   theme.ts      다크 여부 판정 + 창 배경색
-  broadcast.ts  모든 창에 이벤트 전파 (cleared / theme)
+  broadcast.ts  모든 창에 이벤트 전파 (refresh / theme)
   purge.ts      보관 정책 실행
   launch.ts     로그인 시 자동 실행
   tray.ts       트레이 아이콘 + 메뉴
@@ -106,3 +108,24 @@ src/        렌더러 (React)
 - **blur 자동 숨김**: 오버레이의 `blur` 핸들러는 `setTimeout(…, 0)` 안에서 판단해야 한다.
   설정 버튼을 누르면 blur 가 설정 창이 뜨기 전에 먼저 발생해, 미루지 않으면
   `isSettingsVisible()` 이 거짓을 보고 오버레이가 닫혀버린다.
+- **⚠️ `package.json` 의 `name` 을 바꾸거나 `productName` 을 추가하지 말 것**:
+  Electron 의 `app.getName()` 이 `userData` 경로를 정하는데, 이 값은 `package.json` 의
+  `productName` → `name` 순으로 결정된다. 지금은 `name: clipboard-manager` 만 있어
+  데이터가 `~/Library/Application Support/clipboard-manager/` 에 쌓인다.
+  여기에 `productName: 'Simple Clipboard'` 를 추가하면 경로가 통째로 바뀌어 **기존
+  사용자의 히스토리(clipboard.db)와 설정(config.json)이 사라진 것처럼 보인다.**
+  앱 표시 이름은 `electron-builder.yml` 의 `productName` 이 담당하며, 이건 번들 이름만
+  바꾸고 `package.json` 에 주입되지 않는다(배포된 asar 로 확인). Finder 에는
+  "Simple Clipboard", 데이터 폴더는 `clipboard-manager` 로 어긋나 보이지만 그대로 둔다.
+- **이미지 썸네일**: 목록에 이미지 원본(수 MB base64)을 실어 보내면 80px 미리보기를
+  그리려고 원본을 통째로 디코딩해 탭 전환이 초 단위로 느려진다. 캡처 시점에
+  `thumbnail.ts` 로 축소본을 만들어 `thumbnail` 컬럼에 넣고, 조회는
+  `COALESCE(thumbnail, content) AS preview` 로 내려보낸다.
+  - 렌더러에는 원본이 없으므로 **복사는 `id` 로 요청**하고 메인이 DB 에서 원본을 읽는다.
+  - 썸네일은 가로·세로 상한을 함께 걸어야 한다. 높이만 제한하면 가로로 긴 이미지가
+    원본 폭 그대로 남아 거의 줄지 않는다.
+  - 썸네일 도입 전에 저장된 이미지는 `backfill.ts` 가 배치로 채운다. 한 번에 처리하면
+    전부 디코딩하느라 앱 시작이 수 초간 멈춘다.
+- **DB 마이그레이션**: 새 컬럼은 `initDb()` 의 `addMissingColumns()` 에서
+  `PRAGMA table_info` 로 확인해 `ALTER TABLE` 로 추가한다. `SELECT` 는 컬럼을 명시적으로
+  나열하므로 구버전으로 롤백해도 새 컬럼을 무시하고 동작한다.

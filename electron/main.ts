@@ -2,6 +2,7 @@ import { app, nativeTheme } from 'electron'
 import path from 'node:path'
 // APP_ROOT / RENDERER_DIST 를 세팅하므로 창 모듈보다 먼저 로드되어야 한다.
 import './windows/shared'
+import { backfillThumbnails } from './backfill'
 import { broadcastTheme } from './broadcast'
 import { startClipboardWatcher, stopClipboardWatcher } from './clipboard'
 import { initDb } from './db'
@@ -33,6 +34,9 @@ app.whenReady().then(() => {
   createOverlayWindow({ isSettingsVisible })
   createToastWindow()
   createTray({ onOpen: showOverlay, onSettings: openSettingsWindow })
+
+  // 썸네일 도입 이전에 저장된 이미지를 백그라운드에서 채운다(시작을 막지 않는다).
+  backfillThumbnails()
 
   // 클립보드가 바뀔 때마다 저장 → 최대 개수 초과분 정리 → 오버레이에 push.
   startClipboardWatcher((item) => {

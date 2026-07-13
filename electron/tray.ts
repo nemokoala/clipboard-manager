@@ -1,6 +1,6 @@
 import { Tray, Menu, nativeImage, app } from 'electron'
 import path from 'node:path'
-import { broadcastCleared } from './broadcast'
+import { broadcastRefresh } from './broadcast'
 import { deleteAll } from './db'
 
 let tray: Tray | null = null
@@ -54,7 +54,7 @@ export function createTray({ onOpen, onSettings }: TrayCallbacks): Tray {
         label: '전체 삭제',
         click: () => {
           deleteAll()
-          broadcastCleared()
+          broadcastRefresh()
         },
       },
       { type: 'separator' },

@@ -31,13 +31,18 @@ export default function HistoryItem({
   return (
     <div
       onClick={() => onCopy(item)}
-      className="group relative cursor-pointer rounded-xl bg-gray-50 p-3 transition hover:bg-gray-100 dark:bg-white/5 dark:hover:bg-white/10"
+      // content-visibility: auto — 화면 밖 항목은 레이아웃·페인트를 건너뛴다.
+      // contain-intrinsic-size 로 대략적인 높이를 알려 줘야 스크롤바가 튀지 않는다
+      // (auto = 한 번 그려진 뒤로는 실제 높이를 기억한다).
+      className="group relative cursor-pointer rounded-xl bg-gray-50 p-3 transition [contain-intrinsic-size:auto_96px] [content-visibility:auto] hover:bg-gray-100 dark:bg-white/5 dark:hover:bg-white/10"
     >
       {/* 내용 미리보기 */}
       {item.type === 'image' ? (
         <img
-          src={item.content}
-          alt="clipboard image"
+          src={item.preview}
+          alt="클립보드 이미지"
+          loading="lazy"
+          decoding="async"
           className="max-h-[80px] max-w-[calc(100%-4rem)] rounded-lg object-contain"
         />
       ) : item.type === 'link' ? (
@@ -55,12 +60,12 @@ export default function HistoryItem({
             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
           </svg>
           <span className="truncate text-sm font-medium text-toss-blue">
-            {item.content}
+            {item.preview}
           </span>
         </div>
       ) : (
         <p className="line-clamp-3 whitespace-pre-wrap break-words pr-16 text-sm text-gray-800 dark:text-gray-100">
-          {item.content}
+          {item.preview}
         </p>
       )}
 
