@@ -4,6 +4,7 @@ import type {
   QuickCopyModifier,
   SettingsData,
   SetShortcutResult,
+  StorageStats,
   ThemeMode,
 } from '../src/types'
 
@@ -16,33 +17,40 @@ const clipboardAPI = {
   setPinned: (id: number, pinned: boolean): Promise<void> =>
     ipcRenderer.invoke('db:setPinned', id, pinned),
 
-  deleteItem: (id: number): Promise<void> => ipcRenderer.invoke('db:delete', id),
+  deleteItem: (id: number): Promise<void> =>
+    ipcRenderer.invoke('db:delete', id),
 
   deleteAll: (): Promise<void> => ipcRenderer.invoke('db:deleteAll'),
 
-  getTotalSize: (): Promise<number> => ipcRenderer.invoke('db:totalSize'),
+  getStorageStats: (): Promise<StorageStats> => ipcRenderer.invoke('db:stats'),
 
-  copyToClipboard: (content: string): Promise<void> =>
-    ipcRenderer.invoke('clipboard:copy', content),
+  /**
+   * 항목을 클립보드에 다시 쓴다. 내용이 아니라 id 를 넘긴다 —
+   * 렌더러는 이미지의 원본을 갖고 있지 않고(썸네일만 받는다), 메인이 DB 에서 읽는다.
+   */
+  copyToClipboard: (id: number): Promise<void> =>
+    ipcRenderer.invoke('clipboard:copy', id),
 
   /** 오버레이 창 숨기기 (항목 복사 후 사용). */
   hideWindow: (): Promise<void> => ipcRenderer.invoke('window:hide'),
 
   onNewItem: (callback: (item: ClipboardItem) => void): void => {
-    ipcRenderer.on('clipboard:new', (_event, item: ClipboardItem) => callback(item))
+    ipcRenderer.on('clipboard:new', (_event, item: ClipboardItem) =>
+      callback(item),
+    )
   },
 
   removeNewItemListener: (): void => {
     ipcRenderer.removeAllListeners('clipboard:new')
   },
 
-  /** 트레이 "전체 삭제"로 저장소가 비워질 때 발생. */
-  onCleared: (callback: () => void): void => {
-    ipcRenderer.on('clipboard:cleared', () => callback())
+  /** 목록을 다시 읽어야 할 때 발생 (전체 삭제 / 자동 정리 / 썸네일 백필 완료). */
+  onRefresh: (callback: () => void): void => {
+    ipcRenderer.on('clipboard:refresh', () => callback())
   },
 
-  removeClearedListener: (): void => {
-    ipcRenderer.removeAllListeners('clipboard:cleared')
+  removeRefreshListener: (): void => {
+    ipcRenderer.removeAllListeners('clipboard:refresh')
   },
 
   onToast: (callback: (message: string) => void): void => {
@@ -79,7 +87,9 @@ const clipboardAPI = {
 
   /** 다른 창에서 테마가 바뀌면(또는 시스템 테마 전환) 호출된다. */
   onThemeChanged: (callback: (theme: ThemeMode) => void): void => {
-    ipcRenderer.on('theme:changed', (_event, theme: ThemeMode) => callback(theme))
+    ipcRenderer.on('theme:changed', (_event, theme: ThemeMode) =>
+      callback(theme),
+    )
   },
 
   removeThemeChangedListener: (): void => {

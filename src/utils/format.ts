@@ -71,7 +71,22 @@ export function groupByDay(items: ClipboardItem[]): DayGroup[] {
   return groups
 }
 
-/** 바이트 수를 소수점 1자리 MB로 포맷한다, 예: "2.4MB". */
-export function formatMB(bytes: number): string {
-  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
+const UNITS = ['B', 'KB', 'MB', 'GB'] as const
+
+/**
+ * 바이트 수를 사람이 읽는 크기로 포맷한다 (예: "0 B", "12.3 KB", "2.4 MB").
+ * B 단위는 소수점을 쓰지 않고, 그 위로는 소수점 1자리로 표시한다.
+ */
+export function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B'
+
+  let value = bytes
+  let unit = 0
+  while (value >= 1024 && unit < UNITS.length - 1) {
+    value /= 1024
+    unit += 1
+  }
+
+  const rounded = unit === 0 ? String(Math.round(value)) : value.toFixed(1)
+  return `${rounded} ${UNITS[unit]}`
 }

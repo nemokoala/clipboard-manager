@@ -1,4 +1,4 @@
-# 📋 ClipBoard — 클립보드 히스토리 매니저
+# 📋 Simple Clipboard — 클립보드 히스토리 매니저
 
 복사한 텍스트·링크·이미지를 자동으로 기록하고, 전역 단축키로 언제든 꺼내 쓰는
 데스크탑 클립보드 매니저입니다. **macOS / Windows** 모두 지원합니다.
@@ -10,8 +10,6 @@
   <img alt="TailwindCSS" src="https://img.shields.io/badge/Tailwind-3-06B6D4?logo=tailwindcss&logoColor=white">
   <img alt="better-sqlite3" src="https://img.shields.io/badge/better--sqlite3-9-003B57?logo=sqlite&logoColor=white">
 </p>
-
-<!-- 스크린샷: docs/screenshots/ 에 이미지를 넣으면 표시됩니다 (docs/screenshots/README.md 참고) -->
 
 ![오버레이 메인 창](docs/screenshots/overlay.png)
 
@@ -50,8 +48,27 @@
 - **메인 → 렌더러**: `webContents.send(채널)` → preload 의 `onNewItem` / `onCleared` / `onToast` / `onThemeChanged` 구독
 
 ```
-electron/   main.ts · clipboard.ts · db.ts · settings.ts · tray.ts · preload.ts
-src/        App.tsx · main.tsx · components/ · types/ · utils/
+electron/
+  main.ts        앱 부트스트랩(whenReady / 종료 정리)
+  ipc.ts         모든 IPC 채널 등록
+  preload.ts     contextBridge 로 window.clipboardAPI 노출
+  db.ts          better-sqlite3 CRUD + 보관 정책 정리
+  clipboard.ts   클립보드 폴링
+  classify.ts    text / link 분류
+  settings.ts    electron-store 기반 설정
+  shortcuts.ts   전역 단축키 등록·해제
+  theme.ts       라이트/다크 판정 + 창 배경색
+  broadcast.ts   모든 창에 이벤트 전파
+  tray.ts        트레이 아이콘 + 메뉴
+  windows/       overlay.ts · settings-window.ts · toast.ts · shared.ts
+
+src/
+  App.tsx        오버레이 메인 UI
+  main.tsx       URL 해시로 오버레이/설정/토스트 분기 렌더링
+  components/    SearchBar · TabBar · StorageInfo · HistoryList · HistoryItem ·
+                 Settings · Toast · ui/(Toggle · SegmentedControl · OptionGrid)
+  utils/         accelerator.ts · format.ts · theme.ts · platform.ts
+  types/         공유 타입 (preload 에서 API 타입을 파생)
 ```
 
 ### 보안 설계
@@ -59,6 +76,8 @@ src/        App.tsx · main.tsx · components/ · types/ · utils/
 - `contextIsolation: true`, `nodeIntegration: false`
 - 네이티브 모듈(`better-sqlite3`)은 **메인 프로세스에서만** 사용
 - 렌더러는 `window.clipboardAPI`(preload contextBridge) 를 통해서만 DB/클립보드에 접근
+- `window.clipboardAPI` 의 타입은 preload 구현에서 `typeof` 로 파생시켜, 손으로 적은
+  인터페이스가 실제 구현과 어긋나는 일이 없게 했습니다
 
 ## 🚀 개발
 
@@ -66,6 +85,8 @@ src/        App.tsx · main.tsx · components/ · types/ · utils/
 npm install      # 의존성 설치 + better-sqlite3 네이티브 리빌드
 npm run dev      # Vite 개발 서버 + Electron 자동 실행
 npm run build    # 타입체크(tsc) + 프로덕션 번들
+npm run lint     # ESLint
+npm run format   # Prettier 일괄 포맷
 ```
 
 ### ⚠️ `ELECTRON_RUN_AS_NODE` 주의
@@ -101,4 +122,4 @@ npm run dist:mac   # macOS DMG
 
 ## 📄 라이선스
 
-MIT
+[MIT](LICENSE)
