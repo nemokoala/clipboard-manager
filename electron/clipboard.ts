@@ -1,6 +1,7 @@
 import { clipboard, nativeImage, type NativeImage } from 'electron'
 import { createHash } from 'node:crypto'
 import { classifyText } from './classify'
+import { createClipboardCounter } from './clipboard-counter'
 import { insertItem } from './db'
 import { makeThumbnail } from './thumbnail'
 import type { ClipboardItem } from '../src/types'
@@ -26,6 +27,11 @@ let idleTicks = 0
 let lastText = ''
 let lastImageFingerprint = ''
 
+// OS 클립보드 변경 카운터(가능한 플랫폼에서만). 있으면 매 tick 정수 비교만으로
+// "안 바뀜"을 판정해 이미지/텍스트 읽기를 통째로 건너뛴다. null 이면 지문 비교로 동작.
+let readCounter: (() => number) | null = null
+let lastCounter = 0
+
 /**
  * 이미지가 바뀌었는지 판단할 지문.
  *
@@ -35,6 +41,8 @@ let lastImageFingerprint = ''
  *
  * 압축하지 않은 원시 비트맵을 해싱하면 같은 판정을 4ms 에 끝낸다
  * (toBitmap 1ms + sha1 3ms). PNG 인코딩은 진짜 새 이미지일 때만 한 번 한다.
+ * 변경 카운터를 쓸 수 있는 플랫폼에서는 클립보드가 실제로 바뀐 tick 에만
+ * 여기까지 오므로 이 비용도 복사가 일어난 순간에만 든다.
  */
 function imageFingerprint(image: NativeImage): string {
   const { width, height } = image.getSize()
@@ -55,6 +63,8 @@ export function startClipboardWatcher(
   lastText = clipboard.readText()
   const seedImage = clipboard.readImage()
   lastImageFingerprint = seedImage.isEmpty() ? '' : imageFingerprint(seedImage)
+  readCounter = createClipboardCounter()
+  lastCounter = readCounter ? readCounter() : 0
   idleTicks = 0
 
   scheduleNext(onNewItem)
@@ -79,6 +89,15 @@ function scheduleNext(onNewItem: (item: ClipboardItem) => void): void {
 
 /** 새 항목을 캡처했으면 true. 스케줄러가 폴링 간격을 조절하는 데 쓴다. */
 function pollOnce(onNewItem: (item: ClipboardItem) => void): boolean {
+  // 0. 변경 카운터 게이트: 카운터가 그대로면 클립보드가 안 바뀐 것이므로
+  //    아무것도 읽지 않고 끝낸다. 큰 이미지가 올라와 있어도 tick 비용이 정수
+  //    비교 한 번이라 유휴 CPU 가 사실상 0 이다.
+  if (readCounter) {
+    const counter = readCounter()
+    if (counter === lastCounter) return false
+    lastCounter = counter
+  }
+
   // 1. 이미지 우선: 복사한 이미지는 텍스트 fallback도 노출하는 경우가 많아
   //    이미지 채널을 먼저 확인해 올바르게 분류한다.
   const image = clipboard.readImage()
@@ -136,6 +155,9 @@ export function writeToClipboard(content: string): void {
     clipboard.writeText(content)
     lastText = content
   }
+  // 방금의 쓰기로 올라간 카운터를 baseline 에 반영해, 다음 tick 이 우리 자신의
+  // 쓰기를 변경으로 오해해 클립보드를 다시 읽지 않게 한다.
+  if (readCounter) lastCounter = readCounter()
   // 사용자가 방금 무언가를 복사했다 — 활동 중이므로 촘촘한 폴링으로 되돌린다.
   idleTicks = 0
 }

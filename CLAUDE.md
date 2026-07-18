@@ -126,6 +126,13 @@ src/        렌더러 (React)
     원본 폭 그대로 남아 거의 줄지 않는다.
   - 썸네일 도입 전에 저장된 이미지는 `backfill.ts` 가 배치로 채운다. 한 번에 처리하면
     전부 디코딩하느라 앱 시작이 수 초간 멈춘다.
+- **클립보드 변경 감지**: 폴링 tick 마다 이미지를 읽어 비교하면 클립보드에 큰
+  이미지가 올라와 있는 것만으로 CPU 를 계속 쓴다. `clipboard-counter.ts` 가 OS 의
+  클립보드 변경 카운터(Windows `GetClipboardSequenceNumber`, macOS
+  `NSPasteboard.changeCount`)를 koffi(FFI)로 읽어, 카운터가 그대로면 tick 을 정수
+  비교 한 번으로 끝낸다. koffi 로드 실패 시에는 원시 비트맵을 sha1 해싱하는 지문
+  비교로 폴백한다(`imageFingerprint`). 카운터는 최적화 게이트일 뿐이라 실패해도
+  동작은 같다. koffi 는 네이티브 모듈이므로 vite 메인 번들에서 external.
 - **DB 마이그레이션**: 새 컬럼은 `initDb()` 의 `addMissingColumns()` 에서
   `PRAGMA table_info` 로 확인해 `ALTER TABLE` 로 추가한다. `SELECT` 는 컬럼을 명시적으로
   나열하므로 구버전으로 롤백해도 새 컬럼을 무시하고 동작한다.

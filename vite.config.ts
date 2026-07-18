@@ -15,8 +15,8 @@ export default defineConfig({
           build: {
             outDir: 'dist-electron',
             rollupOptions: {
-              // better-sqlite3는 네이티브 모듈 — external 유지
-              external: ['better-sqlite3', 'electron-store'],
+              // better-sqlite3/koffi는 네이티브 모듈 — external 유지
+              external: ['better-sqlite3', 'electron-store', 'koffi'],
             },
           },
         },
