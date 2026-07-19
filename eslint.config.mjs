@@ -33,7 +33,13 @@ export default tseslint.config(
 
   // 메인 프로세스 / 빌드 설정 — Node 전역 (postcss.config.js 는 CommonJS).
   {
-    files: ['electron/**/*.ts', '*.config.ts', '*.config.js', '*.config.mjs'],
+    files: [
+      'electron/**/*.ts',
+      'assets/*.mjs',
+      '*.config.ts',
+      '*.config.js',
+      '*.config.mjs',
+    ],
     languageOptions: {
       globals: { ...globals.node, ...globals.commonjs },
     },

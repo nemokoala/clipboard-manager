@@ -44,7 +44,7 @@ function loadTrayIcon(): Electron.NativeImage {
 
 export function createTray({ onOpen, onSettings }: TrayCallbacks): Tray {
   tray = new Tray(loadTrayIcon())
-  tray.setToolTip('Simple Clipboard')
+  tray.setToolTip('ClipBoard Manager')
 
   tray.setContextMenu(
     Menu.buildFromTemplate([

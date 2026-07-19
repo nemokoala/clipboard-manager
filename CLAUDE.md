@@ -112,11 +112,13 @@ src/        렌더러 (React)
   Electron 의 `app.getName()` 이 `userData` 경로를 정하는데, 이 값은 `package.json` 의
   `productName` → `name` 순으로 결정된다. 지금은 `name: clipboard-manager` 만 있어
   데이터가 `~/Library/Application Support/clipboard-manager/` 에 쌓인다.
-  여기에 `productName: 'Simple Clipboard'` 를 추가하면 경로가 통째로 바뀌어 **기존
+  여기에 `productName: 'ClipBoard Manager'` 를 추가하면 경로가 통째로 바뀌어 **기존
   사용자의 히스토리(clipboard.db)와 설정(config.json)이 사라진 것처럼 보인다.**
   앱 표시 이름은 `electron-builder.yml` 의 `productName` 이 담당하며, 이건 번들 이름만
   바꾸고 `package.json` 에 주입되지 않는다(배포된 asar 로 확인). Finder 에는
-  "Simple Clipboard", 데이터 폴더는 `clipboard-manager` 로 어긋나 보이지만 그대로 둔다.
+  "ClipBoard Manager", 데이터 폴더는 `clipboard-manager` 로 어긋나 보이지만 그대로 둔다.
+  같은 이유로 `electron-builder.yml` 의 `appId` 도 바꾸지 않는다 — macOS 가 권한과
+  로그인 항목을 appId 로 기억해서, 바꾸면 기존 사용자가 권한을 다시 허용해야 한다.
 - **이미지 썸네일**: 목록에 이미지 원본(수 MB base64)을 실어 보내면 80px 미리보기를
   그리려고 원본을 통째로 디코딩해 탭 전환이 초 단위로 느려진다. 캡처 시점에
   `thumbnail.ts` 로 축소본을 만들어 `thumbnail` 컬럼에 넣고, 조회는

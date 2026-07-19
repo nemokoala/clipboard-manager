@@ -1,6 +1,6 @@
 {
   "name": "clipboard-manager",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Clipboard history manager with persistent SQLite storage",
   "author": "nemokoala <fdxguy2@gmail.com>",
   "license": "MIT",

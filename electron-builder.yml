@@ -1,5 +1,7 @@
+# appId 는 표시 이름과 무관하고, macOS 가 권한(접근성 등)과 로그인 항목을 이 값으로
+# 기억한다. 바꾸면 기존 사용자가 권한을 다시 허용해야 하므로 그대로 둔다.
 appId: com.koala.simple-clipboard
-productName: Simple Clipboard
+productName: ClipBoard Manager
 # GH_TOKEN 등이 있으면 electron-builder가 github publish를 추측해 [null] 설정으로 크래시난다.
 publish: null
 directories:
@@ -14,6 +16,7 @@ asarUnpack:
 mac:
   target: dmg
   category: public.app-category.productivity
+  icon: assets/icon.icns
   # 키체인의 Apple Development 인증서로 자동 서명되면 배포용이 아니며,
   # 인증서가 revoked 상태일 때 macOS가 악성코드로 차단한다.
   identity: null
