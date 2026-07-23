@@ -13,12 +13,17 @@ files:
   - assets
 asarUnpack:
   - '**/node_modules/better-sqlite3/**'
+# electron-builder 의 자동 서명은 끄고(identity: null), 대신 afterPack 훅에서
+# ad-hoc(codesign --sign -) 서명한다. Apple 인증서 없이도 arm64 "손상됨" 오류를
+# 없애준다. (미확인 개발자 경고는 남음 → 사용자는 우클릭→열기로 실행)
+afterPack: build/afterPack.js
 mac:
   target: dmg
   category: public.app-category.productivity
   icon: assets/icon.icns
   # 키체인의 Apple Development 인증서로 자동 서명되면 배포용이 아니며,
   # 인증서가 revoked 상태일 때 macOS가 악성코드로 차단한다.
+  # 실제 서명은 afterPack 훅의 ad-hoc codesign 이 담당한다.
   identity: null
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
