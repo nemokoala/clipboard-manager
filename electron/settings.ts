@@ -3,8 +3,17 @@ import type { QuickCopyModifier, ThemeMode } from '../src/types'
 
 /** 오버레이 토글용 기본 전역 단축키. */
 export const DEFAULT_SHORTCUT = 'CommandOrControl+Shift+V'
-const LEGACY_CAPTURE_SHORTCUT = 'CommandOrControl+Shift+X'
-export const DEFAULT_CAPTURE_SHORTCUT = 'CommandOrControl+Alt+Shift+X'
+/**
+ * 지금까지 기본값이었던 조합들. 사용자가 고른 게 아니라 기본값으로 깔려 있던
+ * 값이므로, 그대로 남아 있으면 새 기본값으로 옮겨 준다.
+ *  - Ctrl+Shift+X: 웨일 브라우저 등과 충돌
+ *  - Ctrl+Alt+Shift+X: 충돌은 없지만 4키라 누르기 번거로움
+ */
+const LEGACY_CAPTURE_SHORTCUTS = [
+  'CommandOrControl+Shift+X',
+  'CommandOrControl+Alt+Shift+X',
+]
+export const DEFAULT_CAPTURE_SHORTCUT = 'CommandOrControl+Shift+S'
 export const DEFAULT_QUICK_COPY_MODIFIER: QuickCopyModifier = 'primary'
 export const DEFAULT_HIDE_ON_BLUR = true
 export const DEFAULT_LAUNCH_AT_LOGIN = false
@@ -56,8 +65,8 @@ function getStore(): Store<SettingsSchema> {
         mainWindowHeight: DEFAULT_MAIN_WINDOW_HEIGHT,
       },
     })
-    // 초기 캡처 단축키가 웨일 브라우저 등과 충돌할 수 있어 새 기본값으로 한 번 이동한다.
-    if (store.get('captureShortcut') === LEGACY_CAPTURE_SHORTCUT) {
+    // 예전 기본값이 그대로 남아 있으면 현재 기본값으로 옮긴다.
+    if (LEGACY_CAPTURE_SHORTCUTS.includes(store.get('captureShortcut'))) {
       store.set('captureShortcut', DEFAULT_CAPTURE_SHORTCUT)
     }
   }
