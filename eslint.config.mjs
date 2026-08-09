@@ -31,17 +31,22 @@ export default tseslint.config(
     },
   },
 
-  // 메인 프로세스 / 빌드 설정 — Node 전역 (postcss.config.js 는 CommonJS).
+  // 메인 프로세스 / 빌드 설정 — Node 전역 (postcss.config.js·build 훅은 CommonJS).
   {
     files: [
       'electron/**/*.ts',
       'assets/*.mjs',
+      'build/**/*.js',
       '*.config.ts',
       '*.config.js',
       '*.config.mjs',
     ],
     languageOptions: {
       globals: { ...globals.node, ...globals.commonjs },
+    },
+    rules: {
+      // CommonJS 빌드 스크립트는 require/module.exports 를 쓴다.
+      '@typescript-eslint/no-require-imports': 'off',
     },
   },
 
