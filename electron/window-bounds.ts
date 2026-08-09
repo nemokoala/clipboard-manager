@@ -7,20 +7,33 @@ export interface NativeWindowRect {
   height: number
 }
 
-type WindowFinder = (x: number, y: number) => NativeWindowRect | null
+type WindowEnumerator = () => NativeWindowRect[]
 
-let finder: WindowFinder | null | undefined
+let enumerator: WindowEnumerator | null | undefined
+
+/** 캡처 오버레이를 띄우기 전에 현재 보이는 창을 Z-order 순서로 수집한다. */
+export function getVisibleWindowRects(): NativeWindowRect[] {
+  if (enumerator === undefined) enumerator = createWindowEnumerator()
+  return enumerator?.() ?? []
+}
 
 /** Windows의 실제 Z-order를 따라 커서 아래 최상위 앱 창의 경계를 찾는다. */
 export function getWindowRectAtPoint(
   x: number,
   y: number,
 ): NativeWindowRect | null {
-  if (finder === undefined) finder = createWindowFinder()
-  return finder?.(x, y) ?? null
+  return (
+    getVisibleWindowRects().find(
+      (rect) =>
+        x >= rect.x &&
+        x < rect.x + rect.width &&
+        y >= rect.y &&
+        y < rect.y + rect.height,
+    ) ?? null
+  )
 }
 
-function createWindowFinder(): WindowFinder | null {
+function createWindowEnumerator(): WindowEnumerator | null {
   if (process.platform !== 'win32') return null
 
   try {
@@ -32,7 +45,7 @@ function createWindowFinder(): WindowFinder | null {
       right: 'long',
       bottom: 'long',
     })
-    const getTopWindow = user32.func('void* GetTopWindow(void*)')
+    const getDesktopWindow = user32.func('void* GetDesktopWindow()')
     const getWindow = user32.func('void* GetWindow(void*, uint32_t)')
     const isWindowVisible = user32.func('bool IsWindowVisible(void*)')
     const getWindowRect = user32.func(
@@ -48,8 +61,11 @@ function createWindowFinder(): WindowFinder | null {
       'long DwmGetWindowAttribute(void*, uint32_t, _Out_ CaptureRect*, uint32_t)',
     )
 
-    return (x, y) => {
-      let hwnd = getTopWindow(null)
+    return () => {
+      const result: NativeWindowRect[] = []
+      const seen = new Set<string>()
+      // 데스크톱의 첫 자식부터 시작하면 GetTopWindow(null)보다 환경 차이가 적다.
+      let hwnd = getWindow(getDesktopWindow(), 5) // GW_CHILD
       let inspected = 0
 
       while (hwnd && inspected < 512) {
@@ -67,16 +83,12 @@ function createWindowFinder(): WindowFinder | null {
             const width = rect.right - rect.left
             const height = rect.bottom - rect.top
 
-            if (
-              hasRect &&
-              width >= 40 &&
-              height >= 40 &&
-              x >= rect.left &&
-              x < rect.right &&
-              y >= rect.top &&
-              y < rect.bottom
-            ) {
-              return { x: rect.left, y: rect.top, width, height }
+            if (hasRect && width >= 40 && height >= 40) {
+              const key = `${rect.left}:${rect.top}:${width}:${height}`
+              if (!seen.has(key)) {
+                seen.add(key)
+                result.push({ x: rect.left, y: rect.top, width, height })
+              }
             }
           }
         }
@@ -84,7 +96,7 @@ function createWindowFinder(): WindowFinder | null {
         hwnd = getWindow(hwnd, 2) // GW_HWNDNEXT
       }
 
-      return null
+      return result
     }
   } catch (error) {
     console.warn(

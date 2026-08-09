@@ -66,6 +66,12 @@ const RESIZE_HANDLES: Array<{
   },
 ]
 
+/** 창을 띄울 때 붙인 `#capture?display=<id>` 에서 이 창이 맡은 모니터를 읽는다. */
+function routeDisplayId(): string {
+  const query = window.location.hash.split('?')[1] ?? ''
+  return new URLSearchParams(query).get('display') ?? ''
+}
+
 export default function CaptureOverlay() {
   const [display, setDisplay] = useState<CaptureDisplayData | null>(null)
   const [selection, setSelection] = useState<CaptureRect>(EMPTY_RECT)
@@ -74,15 +80,45 @@ export default function CaptureOverlay() {
   const [adjustment, setAdjustment] = useState<Adjustment | null>(null)
   const [pointer, setPointer] = useState<Point>({ x: 0, y: 0 })
   const requestId = useRef(0)
+  const quickCopyArmed = useRef(false)
+  const quickCopyGesture = useRef(false)
+  const activationCtrlReleased = useRef(false)
+  const regionFrame = useRef(0)
+
+  const applyReady = useCallback((data: CaptureDisplayData) => {
+    setDisplay(data)
+    setSelection({ x: 0, y: 0, width: data.width, height: data.height })
+    setSelectionLocked(false)
+    setDragStart(null)
+    setAdjustment(null)
+    setPointer({ x: 0, y: 0 })
+    requestId.current += 1
+    // 캡처 호출 단축키에 포함된 Ctrl이 즉시 복사로 이어지지 않게 한다.
+    quickCopyArmed.current = false
+    quickCopyGesture.current = false
+    activationCtrlReleased.current = false
+  }, [])
 
   useEffect(() => {
-    window.clipboardAPI.onCaptureReady((data) => {
-      setDisplay(data)
-      setSelection({ x: 0, y: 0, width: data.width, height: data.height })
-      setSelectionLocked(false)
+    window.clipboardAPI.onCaptureReady(applyReady)
+    window.clipboardAPI.onCaptureClosed(() => {
+      setDisplay(null)
     })
-    return () => window.clipboardAPI.removeCaptureReadyListener()
-  }, [])
+    // 메인의 push 는 did-finish-load 에 실려 이 리스너 등록보다 먼저 올 수 있다.
+    // 그러면 그 모니터만 검은 화면으로 남으므로, 마운트 직후 한 번 직접 가져온다.
+    void window.clipboardAPI
+      .getCaptureState(routeDisplayId())
+      .then((data) => {
+        if (data) applyReady(data)
+      })
+      .catch((error) => {
+        console.warn('[capture] 캡처 상태를 가져오지 못했습니다:', error)
+      })
+    return () => {
+      window.clipboardAPI.removeCaptureReadyListener()
+      window.clipboardAPI.removeCaptureClosedListener()
+    }
+  }, [applyReady])
 
   const complete = useCallback(
     (rect = selection, quickCopy = false) => {
@@ -96,36 +132,77 @@ export default function CaptureOverlay() {
     [display, selection],
   )
 
+  // Enter 는 메인이 전역 단축키로 받아 커서가 있는 모니터에만 알려준다.
+  useEffect(() => {
+    window.clipboardAPI.onCaptureCommit(() => complete())
+    return () => window.clipboardAPI.removeCaptureCommitListener()
+  }, [complete])
+
+  // 창이 포커스를 받는 경우(개발 중 devtools 등)를 위한 보조 경로.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.key === 'Control' &&
+        activationCtrlReleased.current &&
+        !event.altKey &&
+        !event.shiftKey &&
+        !event.metaKey
+      ) {
+        quickCopyArmed.current = true
+        return
+      }
       if (event.key === 'Escape') {
         void window.clipboardAPI.cancelCapture()
       } else if (event.key === 'Enter') {
         complete()
       }
     }
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key !== 'Control') return
+      activationCtrlReleased.current = true
+      quickCopyArmed.current = false
+    }
     window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+    }
   }, [complete])
 
+  // pointermove 마다 IPC 를 던지면 초당 수백 번이 된다. 한 프레임에 한 번으로 묶는다.
   const updateAutoRegion = (point: Point) => {
-    if (!display || selectionLocked) return
-    const currentRequest = ++requestId.current
-    void window.clipboardAPI
-      .getCaptureRegion(display.displayId, point.x, point.y)
-      .then((rect) => {
-        if (
-          currentRequest === requestId.current &&
-          !dragStart &&
-          !selectionLocked
-        )
-          setSelection(rect)
-      })
+    if (!display || selectionLocked || regionFrame.current) return
+    regionFrame.current = requestAnimationFrame(() => {
+      regionFrame.current = 0
+      if (!display || selectionLocked || dragStart) return
+      const currentRequest = ++requestId.current
+      void window.clipboardAPI
+        .getCaptureRegion(display.displayId, point.x, point.y)
+        .then((rect) => {
+          if (
+            currentRequest === requestId.current &&
+            !dragStart &&
+            !selectionLocked &&
+            rect.width >= 2 &&
+            rect.height >= 2
+          )
+            setSelection(rect)
+        })
+        .catch((error) => {
+          console.warn('[capture] 자동 창 영역을 가져오지 못했습니다:', error)
+        })
+    })
   }
 
   const handlePointerMove = (event: React.PointerEvent) => {
     const point = { x: event.clientX, y: event.clientY }
     setPointer(point)
+    // 캡처 창은 포커스를 받지 않아 keyup 을 못 본다. 포인터 이벤트로 Ctrl 해제를 본다.
+    if (!event.ctrlKey) activationCtrlReleased.current = true
+    if (event.ctrlKey && activationCtrlReleased.current) {
+      quickCopyArmed.current = true
+    }
 
     if (adjustment && display) {
       setSelection(adjustRect(adjustment, point, display.width, display.height))
@@ -143,17 +220,18 @@ export default function CaptureOverlay() {
 
   const handlePointerDown = (event: React.PointerEvent) => {
     if (event.button !== 0) return
+    quickCopyGesture.current = event.ctrlKey && quickCopyArmed.current
     const point = { x: event.clientX, y: event.clientY }
     requestId.current += 1
     setSelectionLocked(false)
     setDragStart(point)
     setPointer(point)
-    setSelection({ x: point.x, y: point.y, width: 0, height: 0 })
     event.currentTarget.setPointerCapture(event.pointerId)
   }
 
   const handlePointerUp = (event: React.PointerEvent) => {
-    const quickCopy = event.ctrlKey
+    const quickCopy = event.ctrlKey && quickCopyGesture.current
+    quickCopyGesture.current = false
     if (adjustment) {
       if (display && quickCopy) {
         const adjusted = adjustRect(
@@ -180,19 +258,8 @@ export default function CaptureOverlay() {
     }
 
     // 클릭이면 감지한 창을, 드래그면 직접 지정한 영역을 고정한다.
-    if (rect.width < 4 && rect.height < 4) {
-      const point = { x: event.clientX, y: event.clientY }
-      if (display) {
-        void window.clipboardAPI
-          .getCaptureRegion(display.displayId, point.x, point.y)
-          .then((autoRect) => {
-            if (quickCopy) complete(autoRect, true)
-            else {
-              setSelection(autoRect)
-              setSelectionLocked(true)
-            }
-          })
-      }
+    if (Math.hypot(rect.width, rect.height) < 10) {
+      setSelectionLocked(true)
       return
     }
     if (quickCopy) complete(rect, true)
@@ -212,6 +279,7 @@ export default function CaptureOverlay() {
     event.stopPropagation()
     requestId.current += 1
     const origin = { x: event.clientX, y: event.clientY }
+    quickCopyGesture.current = event.ctrlKey && quickCopyArmed.current
     setPointer(origin)
     setAdjustment(
       kind === 'move'

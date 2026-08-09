@@ -52,6 +52,7 @@ import {
   cancelCapture,
   completeCapture,
   getCaptureRegion,
+  getCaptureState,
   closeCapturePreview,
   copyCapturePreview,
   saveCapturePreview,
@@ -67,6 +68,9 @@ export function registerIpc(): void {
 }
 
 function registerCaptureHandlers(): void {
+  ipcMain.handle('capture:getState', (_e, displayId: string) =>
+    getCaptureState(displayId),
+  )
   ipcMain.handle(
     'capture:getRegion',
     (_e, displayId: string, x: number, y: number) =>

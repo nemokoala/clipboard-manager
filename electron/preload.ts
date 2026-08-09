@@ -121,6 +121,27 @@ const clipboardAPI = {
     ipcRenderer.removeAllListeners('capture:ready')
   },
 
+  onCaptureClosed: (callback: () => void): void => {
+    ipcRenderer.on('capture:closed', callback)
+  },
+
+  removeCaptureClosedListener: (): void => {
+    ipcRenderer.removeAllListeners('capture:closed')
+  },
+
+  /** did-finish-load push 를 놓쳤을 때 렌더러가 직접 가져오는 경로. */
+  getCaptureState: (displayId: string): Promise<CaptureDisplayData | null> =>
+    ipcRenderer.invoke('capture:getState', displayId),
+
+  /** 캡처 창은 포커스를 받지 않으므로 Enter 확정은 메인이 알려준다. */
+  onCaptureCommit: (callback: () => void): void => {
+    ipcRenderer.on('capture:commit', callback)
+  },
+
+  removeCaptureCommitListener: (): void => {
+    ipcRenderer.removeAllListeners('capture:commit')
+  },
+
   getCaptureRegion: (
     displayId: string,
     x: number,

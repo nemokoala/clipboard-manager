@@ -66,6 +66,7 @@ electron/   메인 프로세스 (CommonJS 로 빌드)
     overlay.ts         오버레이 창
     settings-window.ts 설정 창
     toast.ts           토스트 창
+    capture.ts         모니터별 캡처 오버레이 + 캡처 결과 미리보기 창
 src/        렌더러 (React)
   App.tsx           오버레이 메인 UI
   main.tsx          URL 해시로 오버레이/설정/토스트 분기 렌더링
@@ -135,6 +136,24 @@ src/        렌더러 (React)
   비교 한 번으로 끝낸다. koffi 로드 실패 시에는 원시 비트맵을 sha1 해싱하는 지문
   비교로 폴백한다(`imageFingerprint`). 카운터는 최적화 게이트일 뿐이라 실패해도
   동작은 같다. koffi 는 네이티브 모듈이므로 vite 메인 번들에서 external.
+- **화면 캡처(다중 모니터)**: 모니터마다 오버레이 창을 하나씩 띄운다. 여기서 **포커스를
+  쓰면 반드시 깨진다** — 키 입력은 활성 창 하나만 받아 다른 모니터에서 Esc/Enter 가 죽고,
+  비활성 창의 첫 클릭은 창 활성화에 먹히며, 커서를 따라 포커스를 옮기면 이동 내내 전면
+  창이 바뀌어 오버레이가 흔들린다. 그래서 캡처 창은 `focusable: false` + `showInactive()`
+  로 **활성화 대상에서 뺀다**. 마우스 입력은 그대로 들어오고, Esc/Enter 는 캡처가 떠 있는
+  동안만 메인이 전역 단축키로 잡아 처리한다(닫을 때 반드시 해제 — 안 하면 Esc 가 시스템
+  전역에서 먹힌 채로 남는다).
+  - 스크린샷은 **렌더러에 원본을 보내지 않는다**. `desktopCapturer` 의 `thumbnailSize` 는
+    모든 소스에 공통이라 작은 모니터 화면까지 가장 큰 모니터 크기로 확대해 돌려준다.
+    물리 해상도로 되돌린 뒤(`trimToPhysicalSize`), 렌더러에는 DIP 크기 JPEG 만 보낸다
+    (`encodePreview`). 4K PNG data URL 은 모니터당 1.3~3.5MB · 인코딩 264~412ms 라
+    창이 여러 개면 메인이 눈에 띄게 멎는다. 실제 잘라내기는 메인의 원본으로 한다.
+  - 상태 전달은 **렌더러가 가져가는(pull) 쪽**이 정답이다. 메인이 `did-finish-load` 에
+    `capture:ready` 를 push 하면 React 가 리스너를 등록하기 전에 도착할 수 있고, 그
+    모니터만 검은 화면으로 남는다. 창 여러 개가 동시에 로드되면 훨씬 잦다. 렌더러는
+    마운트 직후 `#capture?display=<id>` 의 id 로 `capture:getState` 를 호출한다.
+  - 커서 아래 창 자동 감지(`getCaptureRegion`)는 pointermove 마다 IPC 를 던지면 초당
+    수백 번이 되므로 `requestAnimationFrame` 으로 프레임당 한 번으로 묶는다.
 - **DB 마이그레이션**: 새 컬럼은 `initDb()` 의 `addMissingColumns()` 에서
   `PRAGMA table_info` 로 확인해 `ALTER TABLE` 로 추가한다. `SELECT` 는 컬럼을 명시적으로
   나열하므로 구버전으로 롤백해도 새 컬럼을 무시하고 동작한다.

@@ -3,14 +3,16 @@ import {
   clipboard,
   desktopCapturer,
   dialog,
+  globalShortcut,
   nativeImage,
   screen,
+  type DesktopCapturerSource,
   type Display,
   type NativeImage,
 } from 'electron'
 import { writeFile } from 'node:fs/promises'
-import type { CaptureRect } from '../../src/types'
-import { getWindowRectAtPoint } from '../window-bounds'
+import type { CaptureDisplayData, CaptureRect } from '../../src/types'
+import { getVisibleWindowRects, type NativeWindowRect } from '../window-bounds'
 import {
   WEB_PREFERENCES,
   keepVisibleOnMacFullscreen,
@@ -22,23 +24,31 @@ import { showToast } from './toast'
 interface CaptureScreen {
   display: Display
   image: NativeImage
+  /** 전체 화면 PNG 인코딩은 비싸므로 한 번만 만들어 재사용한다. */
+  dataUrl?: string
 }
 
 const windows = new Map<string, BrowserWindow>()
 const captures = new Map<string, CaptureScreen>()
 let starting = false
+let captureActive = false
 let previewWindow: BrowserWindow | null = null
 let previewImage: NativeImage | null = null
+let windowRects: NativeWindowRect[] = []
+let captureKeysRegistered = false
 
 export async function startCapture(): Promise<void> {
-  if (starting || windows.size > 0) return
+  if (starting || captureActive) return
   starting = true
+  captureActive = true
   hideOverlay()
   closeCapturePreview()
 
   try {
     // 기존 창이 완전히 사라진 다음 화면을 읽어 앱 자체가 캡처되지 않게 한다.
-    await new Promise((resolve) => setTimeout(resolve, 120))
+    await new Promise((resolve) => setTimeout(resolve, 35))
+    // 오버레이가 Z-order를 가리기 전에 자동 선택 후보를 고정한다.
+    windowRects = getVisibleWindowRects()
     const displays = screen.getAllDisplays()
     const maxWidth = Math.max(
       ...displays.map((display) =>
@@ -55,34 +65,79 @@ export async function startCapture(): Promise<void> {
       thumbnailSize: { width: maxWidth, height: maxHeight },
     })
 
+    const sourceByDisplay = matchSourcesToDisplays(displays, sources)
     for (const display of displays) {
-      const source =
-        sources.find((item) => item.display_id === String(display.id)) ??
-        (displays.length === 1 ? sources[0] : undefined)
+      const source = sourceByDisplay.get(String(display.id))
       if (!source || source.thumbnail.isEmpty()) continue
 
       const displayId = String(display.id)
-      captures.set(displayId, { display, image: source.thumbnail })
-      createCaptureWindow(displayId, display, source.thumbnail)
+      const image = trimToPhysicalSize(source.thumbnail, display)
+      captures.set(displayId, { display, image })
+      showCaptureWindow(displayId, display, image)
     }
 
-    if (windows.size === 0) {
+    console.info(
+      `[capture] 캡처 시작: 디스플레이 ${displays.length}개 / 소스 ${sources.length}개 / 오버레이 ${captures.size}개`,
+    )
+
+    if (captures.size === 0) {
+      closeCaptureWindows('unavailable')
       showToast('화면을 캡처할 수 없습니다.')
+      return
     }
+    registerCaptureKeys()
   } catch (error) {
     console.error('[capture] 캡처 시작 실패:', error)
-    closeCaptureWindows()
+    closeCaptureWindows('start-error')
     showToast('화면 캡처를 시작하지 못했습니다.')
   } finally {
     starting = false
   }
 }
 
-function createCaptureWindow(
+/**
+ * 소스와 디스플레이를 짝짓는다.
+ * 우선 `display_id` 로 맞추고, 그 값이 비어 있는 환경(Windows 일부 드라이버)에서는
+ * 남은 것끼리 순서대로 짝짓는다. 예전처럼 모니터가 2개 이상일 때 그냥 건너뛰면
+ * 그 모니터에는 캡처 오버레이가 아예 뜨지 않는다.
+ */
+function matchSourcesToDisplays(
+  displays: Display[],
+  sources: DesktopCapturerSource[],
+): Map<string, DesktopCapturerSource> {
+  const matched = new Map<string, DesktopCapturerSource>()
+  const used = new Set<string>()
+
+  for (const display of displays) {
+    const source = sources.find(
+      (item) => item.display_id === String(display.id) && !used.has(item.id),
+    )
+    if (!source) continue
+    matched.set(String(display.id), source)
+    used.add(source.id)
+  }
+
+  const leftovers = sources.filter((item) => !used.has(item.id))
+  for (const display of displays) {
+    if (matched.has(String(display.id))) continue
+    const source = leftovers.shift()
+    if (source) matched.set(String(display.id), source)
+  }
+
+  return matched
+}
+
+function showCaptureWindow(
   displayId: string,
   display: Display,
   image: NativeImage,
 ): void {
+  const existing = windows.get(displayId)
+  if (existing && !existing.isDestroyed()) {
+    sendCaptureToWindow(existing, displayId, display, image)
+    return
+  }
+
   const win = new BrowserWindow({
     ...display.bounds,
     frame: false,
@@ -95,6 +150,13 @@ function createCaptureWindow(
     minimizable: false,
     maximizable: false,
     fullscreenable: false,
+    // 모니터마다 창이 하나씩 있으므로 활성화(포커스)를 쓰면 반드시 깨진다.
+    //  - 어느 한 창만 키 입력을 받아, 다른 모니터에서는 Esc/Enter 가 죽는다.
+    //  - 비활성 창의 첫 클릭은 창 활성화에 먹힌다.
+    //  - 커서를 따라 포커스를 옮기면 이동 내내 전면 창이 바뀌며 오버레이가 흔들린다.
+    // 창을 아예 활성화 대상에서 빼면(WS_EX_NOACTIVATE) 세 문제가 같이 사라진다.
+    // 마우스 입력은 그대로 들어오고, 키보드는 메인이 전역 단축키로 받는다.
+    focusable: false,
     show: false,
     webPreferences: WEB_PREFERENCES,
   })
@@ -103,27 +165,144 @@ function createCaptureWindow(
   loadRoute(win, `capture?display=${displayId}`)
 
   win.webContents.once('did-finish-load', () => {
-    win.webContents.send('capture:ready', {
-      displayId,
-      width: display.bounds.width,
-      height: display.bounds.height,
-      screenshot: image.toDataURL(),
-    })
-    setTimeout(() => {
-      if (win.isDestroyed()) return
-      win.show()
-      if (
-        screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).id ===
-        display.id
-      ) {
-        win.focus()
-      }
-    }, 40)
+    sendCaptureToWindow(win, displayId, display, image)
+  })
+
+  // 렌더러가 죽으면 검은 창만 남아 캡처가 멈춘 것처럼 보인다. 전체를 정리한다.
+  win.webContents.on('render-process-gone', (_event, details) => {
+    console.error('[capture] 캡처 창 렌더러 종료:', displayId, details.reason)
+    if (!win.isDestroyed()) win.destroy()
+    closeCaptureWindows('renderer-gone')
+    showToast('화면 캡처가 중단되었습니다.')
+  })
+
+  win.webContents.on('did-fail-load', (_event, code, description) => {
+    console.error('[capture] 캡처 창 로드 실패:', displayId, code, description)
+    closeCaptureWindows('load-error')
+    showToast('화면 캡처를 시작하지 못했습니다.')
   })
 
   win.on('closed', () => {
     windows.delete(displayId)
+    if (![...windows.values()].some((item) => item.isVisible())) {
+      captureActive = false
+    }
   })
+}
+
+function sendCaptureToWindow(
+  win: BrowserWindow,
+  displayId: string,
+  display: Display,
+  image: NativeImage,
+): void {
+  win.setBounds(display.bounds)
+  win.webContents.send(
+    'capture:ready',
+    buildDisplayData(displayId, display, image),
+  )
+  // show() 는 창을 활성화한다. 모니터마다 창을 띄우면 마지막에 뜬 창이 포커스를
+  // 가져가, 커서가 있는 모니터에서는 Esc/Enter 가 먹지 않고 첫 클릭은 창 활성화에
+  // 먹혀버린다. 비활성으로 띄운 뒤 커서가 있는 창만 포커스한다.
+  win.showInactive()
+}
+
+/**
+ * `getSources` 의 thumbnailSize 는 모든 소스에 공통으로 적용돼, 가장 큰 모니터에
+ * 맞춘 상자 크기로 작은 모니터의 화면까지 확대해서 돌려준다(1920×1080 → 3841×2161).
+ * 확대분은 화질에 보탬이 없고 메모리만 4배로 먹으므로 실제 물리 해상도로 되돌린다.
+ */
+function trimToPhysicalSize(image: NativeImage, display: Display): NativeImage {
+  const width = Math.round(display.bounds.width * display.scaleFactor)
+  const height = Math.round(display.bounds.height * display.scaleFactor)
+  const size = image.getSize()
+  if (size.width <= width || size.height <= height) return image
+  return image.resize({ width, height, quality: 'good' })
+}
+
+function buildDisplayData(
+  displayId: string,
+  display: Display,
+  image: NativeImage,
+): CaptureDisplayData {
+  const capture = captures.get(displayId)
+  const screenshot = capture?.dataUrl ?? encodePreview(image, display)
+  if (capture) capture.dataUrl = screenshot
+  return {
+    displayId,
+    width: display.bounds.width,
+    height: display.bounds.height,
+    screenshot,
+  }
+}
+
+/**
+ * 렌더러에는 CSS 픽셀 크기의 JPEG 만 보낸다.
+ * 4K PNG 를 data URL 로 만들면 한 장이 수 MB 라, 모니터마다 인코딩·IPC 전송·디코딩을
+ * 하는 사이 메인이 멎고 렌더러가 메모리로 죽는다(모니터 하나만 뜨거나 검은 화면).
+ * 오버레이는 어차피 창 크기에 맞춰 그리므로 DIP 크기면 1:1 로 충분하고,
+ * 실제 잘라내기는 메인이 들고 있는 원본 해상도 이미지로 한다.
+ */
+function encodePreview(image: NativeImage, display: Display): string {
+  const preview = image.resize({
+    width: display.bounds.width,
+    height: display.bounds.height,
+    quality: 'good',
+  })
+  return `data:image/jpeg;base64,${preview.toJPEG(88).toString('base64')}`
+}
+
+/**
+ * 렌더러가 마운트 직후 직접 가져가는 경로.
+ * 메인의 `capture:ready` push 는 `did-finish-load` 에 실리는데, 이 이벤트가
+ * React 가 리스너를 등록하기 전에 오면 그 모니터만 검은 화면으로 남는다.
+ * 모니터가 여러 개면 동시에 로드되며 이 경쟁이 훨씬 자주 일어난다.
+ */
+export function getCaptureState(displayId: string): CaptureDisplayData | null {
+  const capture = captures.get(displayId)
+  if (!captureActive || !capture) return null
+  return buildDisplayData(displayId, capture.display, capture.image)
+}
+
+/**
+ * 캡처 창은 포커스를 받지 않으므로 키 입력이 렌더러에 닿지 않는다.
+ * 캡처가 떠 있는 동안만 Esc/Enter 를 전역 단축키로 잡아 메인이 처리한다.
+ * 이러면 어느 모니터를 보고 있든 키가 동작한다.
+ */
+function registerCaptureKeys(): void {
+  if (captureKeysRegistered) return
+  try {
+    const escapeOk = globalShortcut.register('Escape', () => cancelCapture())
+    const enterOk = globalShortcut.register('Return', () =>
+      commitCursorDisplay(),
+    )
+    captureKeysRegistered = true
+    if (!escapeOk || !enterOk) {
+      console.warn(
+        `[capture] 캡처용 키 등록 실패 (Esc: ${escapeOk}, Enter: ${enterOk}) — 창 포커스가 있을 때만 동작한다.`,
+      )
+    }
+  } catch (error) {
+    console.warn('[capture] 캡처용 키 등록 실패:', error)
+  }
+}
+
+function unregisterCaptureKeys(): void {
+  if (!captureKeysRegistered) return
+  globalShortcut.unregister('Escape')
+  globalShortcut.unregister('Return')
+  captureKeysRegistered = false
+}
+
+/** Enter: 커서가 있는 모니터의 렌더러에게 현재 선택으로 확정하라고 알린다. */
+function commitCursorDisplay(): void {
+  if (!captureActive) return
+  const cursor = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
+  const win =
+    windows.get(String(cursor.id)) ??
+    [...windows.values()].find((item) => !item.isDestroyed() && item.isVisible())
+  if (!win || win.isDestroyed() || !win.isVisible()) return
+  win.webContents.send('capture:commit')
 }
 
 export function getCaptureRegion(
@@ -141,19 +320,32 @@ export function getCaptureRegion(
           y: Math.round(bounds.y + localY),
         })
       : { x: Math.round(bounds.x + localX), y: Math.round(bounds.y + localY) }
-  const nativeRect = getWindowRectAtPoint(screenPoint.x, screenPoint.y)
+  const nativeRect =
+    windowRects.find(
+      (rect) =>
+        screenPoint.x >= rect.x &&
+        screenPoint.x < rect.x + rect.width &&
+        screenPoint.y >= rect.y &&
+        screenPoint.y < rect.y + rect.height,
+    ) ?? null
 
   if (!nativeRect) {
     return { x: 0, y: 0, width: bounds.width, height: bounds.height }
   }
 
-  const dipRect =
-    process.platform === 'win32'
-      ? screen.screenToDipRect(null, nativeRect)
-      : nativeRect
+  let dipRect: NativeWindowRect
+  try {
+    dipRect =
+      process.platform === 'win32'
+        ? screen.screenToDipRect(windows.get(displayId) ?? null, nativeRect)
+        : nativeRect
+  } catch (error) {
+    console.warn('[capture] 창 좌표 변환 실패, 화면 전체로 대체합니다.', error)
+    return { x: 0, y: 0, width: bounds.width, height: bounds.height }
+  }
   const x = dipRect.x - bounds.x
   const y = dipRect.y - bounds.y
-  return clampRect(
+  const region = clampRect(
     {
       x,
       y,
@@ -163,6 +355,19 @@ export function getCaptureRegion(
     bounds.width,
     bounds.height,
   )
+  if (region.width < 2 || region.height < 2) {
+    console.warn(
+      '[capture] 보조 모니터 창 영역 변환이 유효하지 않아 화면 전체로 대체합니다.',
+      {
+        displayId,
+        displayBounds: bounds,
+        nativeRect,
+        dipRect,
+      },
+    )
+    return { x: 0, y: 0, width: bounds.width, height: bounds.height }
+  }
+  return region
 }
 
 export function completeCapture(
@@ -189,7 +394,7 @@ export function completeCapture(
     height: Math.max(1, Math.round(safe.height * scaleY)),
   })
 
-  closeCaptureWindows()
+  closeCaptureWindows(quickCopy ? 'quick-copy' : 'complete')
   // 감시기가 이 변경을 기존 이미지 히스토리 흐름으로 저장하고 토스트를 표시한다.
   const result = nativeImage.createFromBuffer(cropped.toPNG())
   clipboard.writeImage(result)
@@ -197,7 +402,7 @@ export function completeCapture(
 }
 
 export function cancelCapture(): void {
-  closeCaptureWindows()
+  closeCaptureWindows('cancel')
 }
 
 function showCapturePreview(image: NativeImage): void {
@@ -285,12 +490,18 @@ export function closeCapturePreview(): void {
   if (win && !win.isDestroyed()) win.destroy()
 }
 
-function closeCaptureWindows(): void {
+function closeCaptureWindows(reason: string): void {
+  console.info(`[capture] 캡처 화면 종료: ${reason}`)
+  unregisterCaptureKeys()
   for (const win of windows.values()) {
-    if (!win.isDestroyed()) win.destroy()
+    if (!win.isDestroyed()) {
+      win.webContents.send('capture:closed')
+      win.hide()
+    }
   }
-  windows.clear()
   captures.clear()
+  windowRects = []
+  captureActive = false
 }
 
 function clampRect(
