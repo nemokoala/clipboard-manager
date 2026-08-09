@@ -38,6 +38,126 @@ body {
 .dark *::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.15);
 }
+
+.capture-canvas {
+  animation: capture-enter 140ms ease-out both;
+}
+
+.capture-hint {
+  animation: capture-fade 180ms ease-out both;
+}
+
+.capture-size {
+  animation: capture-rise 180ms ease-out both;
+}
+
+.capture-selection {
+  transition:
+    left 75ms ease-out,
+    top 75ms ease-out,
+    width 75ms ease-out,
+    height 75ms ease-out;
+}
+
+.capture-selection-dragging {
+  transition: none;
+}
+
+.capture-magnifier {
+  animation: magnifier-enter 100ms ease-out both;
+}
+
+.capture-preview {
+  animation: preview-enter 160ms ease-out both;
+}
+
+.capture-preview-image {
+  animation: preview-image-enter 220ms 40ms ease-out both;
+}
+
+.preview-grid {
+  background-image:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.035) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255, 255, 255, 0.035) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.035) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.035) 75%);
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+  background-size: 16px 16px;
+}
+
+@keyframes preview-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes preview-image-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes magnifier-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+kbd {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: rgba(255, 255, 255, 0.92);
+  font: inherit;
+}
+
+@keyframes capture-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes capture-rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes capture-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 *::-webkit-scrollbar-track {
   background: transparent;
 }

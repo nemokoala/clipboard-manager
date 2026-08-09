@@ -14,11 +14,13 @@ import {
 import { runPurge } from './purge'
 import {
   applyShortcut,
+  applyCaptureShortcut,
   restoreStoredShortcut,
   unregisterAllShortcuts,
 } from './shortcuts'
 import {
   DEFAULT_HIDE_ON_BLUR,
+  DEFAULT_CAPTURE_SHORTCUT,
   DEFAULT_LAUNCH_AT_LOGIN,
   DEFAULT_MAX_ITEMS,
   DEFAULT_QUICK_COPY_MODIFIER,
@@ -26,6 +28,7 @@ import {
   DEFAULT_SHORTCUT,
   DEFAULT_THEME,
   getHideOnBlur,
+  getCaptureShortcut,
   getLaunchAtLogin,
   getMaxItems,
   getQuickCopyModifier,
@@ -38,18 +41,46 @@ import {
   setQuickCopyModifier,
   setRetentionDays,
   setStoredShortcut,
+  setStoredCaptureShortcut,
   setStoredTheme,
 } from './settings'
 import { applyLaunchAtLogin } from './launch'
 import { hideOverlay } from './windows/overlay'
 import { openSettingsWindow } from './windows/settings-window'
 import { showToast } from './windows/toast'
+import {
+  cancelCapture,
+  completeCapture,
+  getCaptureRegion,
+  closeCapturePreview,
+  copyCapturePreview,
+  saveCapturePreview,
+} from './windows/capture'
+import type { CaptureRect } from '../src/types'
 
 /** 렌더러가 preload 를 통해 호출하는 모든 채널을 한곳에서 등록한다. */
 export function registerIpc(): void {
   registerDbHandlers()
   registerWindowHandlers()
   registerSettingsHandlers()
+  registerCaptureHandlers()
+}
+
+function registerCaptureHandlers(): void {
+  ipcMain.handle(
+    'capture:getRegion',
+    (_e, displayId: string, x: number, y: number) =>
+      getCaptureRegion(displayId, x, y),
+  )
+  ipcMain.handle(
+    'capture:complete',
+    (_e, displayId: string, rect: CaptureRect, quickCopy: boolean) =>
+      completeCapture(displayId, rect, quickCopy),
+  )
+  ipcMain.handle('capture:cancel', () => cancelCapture())
+  ipcMain.handle('capture:previewCopy', () => copyCapturePreview())
+  ipcMain.handle('capture:previewSave', () => saveCapturePreview())
+  ipcMain.handle('capture:previewClose', () => closeCapturePreview())
 }
 
 function registerDbHandlers(): void {
@@ -84,6 +115,8 @@ function registerSettingsHandlers(): void {
   ipcMain.handle('settings:get', () => ({
     shortcut: getShortcut(),
     defaultShortcut: DEFAULT_SHORTCUT,
+    captureShortcut: getCaptureShortcut(),
+    defaultCaptureShortcut: DEFAULT_CAPTURE_SHORTCUT,
     quickCopyModifier: getQuickCopyModifier(),
     defaultQuickCopyModifier: DEFAULT_QUICK_COPY_MODIFIER,
     hideOnBlur: getHideOnBlur(),
@@ -108,6 +141,24 @@ function registerSettingsHandlers(): void {
     return {
       ok: false,
       error: '이 단축키를 등록할 수 없습니다 (다른 앱이 사용 중일 수 있어요).',
+    }
+  })
+
+  ipcMain.handle('settings:setCaptureShortcut', (_e, accelerator: string) => {
+    if (accelerator === getShortcut()) {
+      return {
+        ok: false,
+        error: '클립보드 열기 단축키와 다른 조합을 사용해주세요.',
+      }
+    }
+    if (applyCaptureShortcut(accelerator)) {
+      setStoredCaptureShortcut(accelerator)
+      return { ok: true }
+    }
+    restoreStoredShortcut()
+    return {
+      ok: false,
+      error: '이 단축키를 등록할 수 없습니다. 다른 조합을 사용해주세요.',
     }
   })
 

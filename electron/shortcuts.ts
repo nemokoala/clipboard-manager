@@ -1,12 +1,14 @@
 import { globalShortcut } from 'electron'
-import { getShortcut } from './settings'
+import { getCaptureShortcut, getShortcut } from './settings'
 import { toggleOverlay } from './windows/overlay'
+import { startCapture } from './windows/capture'
 
 /** OS 에 현재 등록된 accelerator (교체·복원 시 참조). */
 let activeShortcut = ''
+let activeCaptureShortcut = ''
 
 export function hasActiveShortcut(): boolean {
-  return activeShortcut !== ''
+  return activeShortcut !== '' && activeCaptureShortcut !== ''
 }
 
 /**
@@ -30,9 +32,28 @@ export function applyShortcut(accelerator: string): boolean {
   return false
 }
 
+export function applyCaptureShortcut(accelerator: string): boolean {
+  if (activeCaptureShortcut) {
+    globalShortcut.unregister(activeCaptureShortcut)
+    activeCaptureShortcut = ''
+  }
+
+  try {
+    if (globalShortcut.register(accelerator, () => void startCapture())) {
+      activeCaptureShortcut = accelerator
+      return true
+    }
+  } catch {
+    // 형식이 잘못되었거나 OS가 조합을 거부한 경우 false를 반환한다.
+  }
+  return false
+}
+
 /** 저장된 단축키로 되돌린다. */
 export function restoreStoredShortcut(): boolean {
-  return applyShortcut(getShortcut())
+  const overlayOk = applyShortcut(getShortcut())
+  const captureOk = applyCaptureShortcut(getCaptureShortcut())
+  return overlayOk && captureOk
 }
 
 /**
@@ -44,4 +65,5 @@ export function restoreStoredShortcut(): boolean {
 export function unregisterAllShortcuts(): void {
   globalShortcut.unregisterAll()
   activeShortcut = ''
+  activeCaptureShortcut = ''
 }

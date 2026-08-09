@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import Settings from './components/Settings'
 import Toast from './components/Toast'
+import CaptureOverlay from './components/CaptureOverlay'
+import CapturePreview from './components/CapturePreview'
 import { initTheme, setTheme } from './utils/theme'
 import './index.css'
 
@@ -18,6 +20,10 @@ const content = route.startsWith('settings') ? (
   <Settings />
 ) : route.startsWith('toast') ? (
   <Toast />
+) : route.startsWith('capture-preview') ? (
+  <CapturePreview />
+) : route.startsWith('capture') ? (
+  <CaptureOverlay />
 ) : (
   <App />
 )

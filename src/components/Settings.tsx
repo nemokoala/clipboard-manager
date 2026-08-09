@@ -67,7 +67,7 @@ export default function Settings() {
   // 모든 설정은 변경 즉시 적용·저장한다(저장 버튼 없음).
   // 현재 값과 기본값을 한 객체로 함께 들고 있어 "기본값으로" 버튼이 단순해진다.
   const [settings, setSettings] = useState<SettingsData | null>(null)
-  const [recording, setRecording] = useState(false)
+  const [recording, setRecording] = useState<'overlay' | 'capture' | null>(null)
   // 단축키 등록 실패 시에만 표시하는 에러 메시지.
   const [error, setError] = useState('')
 
@@ -131,10 +131,22 @@ export default function Settings() {
     setError('')
   }
 
+  const applyCaptureShortcut = async (next: string) => {
+    if (!settings || !next || next === settings.captureShortcut) return
+
+    const result = await window.clipboardAPI.setCaptureShortcut(next)
+    if (!result.ok) {
+      setError(result.error ?? '캡처 단축키를 등록할 수 없습니다.')
+      return
+    }
+    patch('captureShortcut', next)
+    setError('')
+  }
+
   /** 녹화 모드 진입/종료 — main 에 전역 단축키 일시 중단을 알린다. */
-  const setRecordingMode = (active: boolean) => {
-    setRecording(active)
-    void window.clipboardAPI.setRecording(active)
+  const setRecordingMode = (target: 'overlay' | 'capture' | null) => {
+    setRecording(target)
+    void window.clipboardAPI.setRecording(target !== null)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -144,14 +156,16 @@ export default function Settings() {
 
     // Escape 는 변경 없이 녹화만 취소.
     if (e.nativeEvent.code === 'Escape') {
-      setRecordingMode(false)
+      setRecordingMode(null)
       return
     }
 
     const accelerator = eventToAccelerator(e.nativeEvent)
     if (accelerator) {
-      setRecordingMode(false)
-      void applyShortcut(accelerator)
+      const target = recording
+      setRecordingMode(null)
+      if (target === 'capture') void applyCaptureShortcut(accelerator)
+      else void applyShortcut(accelerator)
     }
   }
 
@@ -159,6 +173,7 @@ export default function Settings() {
   const handleReset = () => {
     if (!settings) return
     void applyShortcut(settings.defaultShortcut)
+    void applyCaptureShortcut(settings.defaultCaptureShortcut)
     selectQuickCopy(settings.defaultQuickCopyModifier)
     toggleHideOnBlur(settings.defaultHideOnBlur)
     toggleLaunchAtLogin(settings.defaultLaunchAtLogin)
@@ -199,23 +214,48 @@ export default function Settings() {
           <button
             type="button"
             onClick={() => {
-              setRecordingMode(true)
+              setRecordingMode('overlay')
               setError('')
             }}
-            onBlur={() => recording && setRecordingMode(false)}
+            onBlur={() => recording === 'overlay' && setRecordingMode(null)}
             onKeyDown={handleKeyDown}
             className={[
               'flex h-12 w-full items-center justify-center rounded-xl border text-base font-semibold tracking-wide transition focus:outline-none',
-              recording
+              recording === 'overlay'
                 ? 'border-toss-blue/60 bg-toss-blue/10 text-toss-blue'
                 : 'border-gray-200 bg-gray-50 text-gray-900 hover:bg-gray-100 dark:border-white/10 dark:bg-white/5 dark:text-gray-100 dark:hover:bg-white/10',
             ].join(' ')}
           >
-            {recording
+            {recording === 'overlay'
               ? '키를 누르세요…'
               : settings.shortcut
                 ? prettyAccelerator(settings.shortcut)
                 : '설정되지 않음'}
+          </button>
+        </Field>
+
+        <Field
+          label="캡처 단축키"
+          hint="누르면 화면 캡처 모드가 열립니다. 창을 클릭하거나 영역을 드래그해 저장할 수 있습니다."
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setRecordingMode('capture')
+              setError('')
+            }}
+            onBlur={() => recording === 'capture' && setRecordingMode(null)}
+            onKeyDown={handleKeyDown}
+            className={[
+              'flex h-12 w-full items-center justify-center rounded-xl border text-base font-semibold tracking-wide transition focus:outline-none',
+              recording === 'capture'
+                ? 'border-toss-blue/60 bg-toss-blue/10 text-toss-blue'
+                : 'border-gray-200 bg-gray-50 text-gray-900 hover:bg-gray-100 dark:border-white/10 dark:bg-white/5 dark:text-gray-100 dark:hover:bg-white/10',
+            ].join(' ')}
+          >
+            {recording === 'capture'
+              ? '원하는 조합을 누르세요…'
+              : prettyAccelerator(settings.captureShortcut)}
           </button>
         </Field>
 

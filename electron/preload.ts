@@ -6,6 +6,9 @@ import type {
   SetShortcutResult,
   StorageStats,
   ThemeMode,
+  CaptureDisplayData,
+  CaptureRect,
+  CapturePreviewData,
 } from '../src/types'
 
 const clipboardAPI = {
@@ -67,6 +70,9 @@ const clipboardAPI = {
   setShortcut: (accelerator: string): Promise<SetShortcutResult> =>
     ipcRenderer.invoke('settings:setShortcut', accelerator),
 
+  setCaptureShortcut: (accelerator: string): Promise<SetShortcutResult> =>
+    ipcRenderer.invoke('settings:setCaptureShortcut', accelerator),
+
   setQuickCopyModifier: (modifier: QuickCopyModifier): Promise<void> =>
     ipcRenderer.invoke('settings:setQuickCopyModifier', modifier),
 
@@ -104,6 +110,51 @@ const clipboardAPI = {
 
   /** 이 렌더러를 소유한 창 닫기 (설정 창용). */
   closeSelf: (): Promise<void> => ipcRenderer.invoke('settings:closeSelf'),
+
+  onCaptureReady: (callback: (data: CaptureDisplayData) => void): void => {
+    ipcRenderer.on('capture:ready', (_event, data: CaptureDisplayData) =>
+      callback(data),
+    )
+  },
+
+  removeCaptureReadyListener: (): void => {
+    ipcRenderer.removeAllListeners('capture:ready')
+  },
+
+  getCaptureRegion: (
+    displayId: string,
+    x: number,
+    y: number,
+  ): Promise<CaptureRect> =>
+    ipcRenderer.invoke('capture:getRegion', displayId, x, y),
+
+  completeCapture: (
+    displayId: string,
+    rect: CaptureRect,
+    quickCopy = false,
+  ): Promise<void> =>
+    ipcRenderer.invoke('capture:complete', displayId, rect, quickCopy),
+
+  cancelCapture: (): Promise<void> => ipcRenderer.invoke('capture:cancel'),
+
+  onCapturePreview: (callback: (data: CapturePreviewData) => void): void => {
+    ipcRenderer.on('capture:preview', (_event, data: CapturePreviewData) =>
+      callback(data),
+    )
+  },
+
+  removeCapturePreviewListener: (): void => {
+    ipcRenderer.removeAllListeners('capture:preview')
+  },
+
+  copyCapturePreview: (): Promise<boolean> =>
+    ipcRenderer.invoke('capture:previewCopy'),
+
+  saveCapturePreview: (): Promise<boolean> =>
+    ipcRenderer.invoke('capture:previewSave'),
+
+  closeCapturePreview: (): Promise<void> =>
+    ipcRenderer.invoke('capture:previewClose'),
 }
 
 contextBridge.exposeInMainWorld('clipboardAPI', clipboardAPI)

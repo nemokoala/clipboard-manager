@@ -23,6 +23,7 @@
 - **타입 분류** — `text` / `link`(http·https) / `image`(PNG) 자동 구분 후 탭 필터 제공
 - **영구 저장** — `better-sqlite3` 로 로컬 DB(`userData/clipboard.db`)에 보관, 재시작해도 유지
 - **오버레이 창** — `Ctrl/Cmd + Shift + V` 로 토글하는 frameless 창, 포커스를 잃으면 자동 숨김
+- **화면 캡처** — `Ctrl/Cmd + Alt + Shift + X` 로 실행, 창 자동 선택 또는 자유 영역 드래그 후 미리보기·복사·PNG 저장
 - **고정(즐겨찾기)** — 중요한 항목을 상단에 고정, 자동 정리 대상에서 제외
 - **자동 정리** — 보관 기간(일) / 최대 개수 초과 시 오래된 항목부터 삭제 (기본값 무제한)
 - **빠른 복사** — 목록이 열린 상태에서 `수정자 + 숫자키(1~9)` 로 해당 항목을 즉시 복사
@@ -57,16 +58,17 @@ electron/
   classify.ts    text / link 분류
   settings.ts    electron-store 기반 설정
   shortcuts.ts   전역 단축키 등록·해제
+  window-bounds.ts Windows 창 경계 자동 감지
   theme.ts       라이트/다크 판정 + 창 배경색
   broadcast.ts   모든 창에 이벤트 전파
   tray.ts        트레이 아이콘 + 메뉴
-  windows/       overlay.ts · settings-window.ts · toast.ts · shared.ts
+  windows/       overlay.ts · capture.ts · settings-window.ts · toast.ts · shared.ts
 
 src/
   App.tsx        오버레이 메인 UI
   main.tsx       URL 해시로 오버레이/설정/토스트 분기 렌더링
   components/    SearchBar · TabBar · StorageInfo · HistoryList · HistoryItem ·
-                 Settings · Toast · ui/(Toggle · SegmentedControl · OptionGrid)
+                 Settings · CaptureOverlay · Toast · ui/(Toggle · SegmentedControl · OptionGrid)
   utils/         accelerator.ts · format.ts · theme.ts · platform.ts
   types/         공유 타입 (preload 에서 API 타입을 파생)
 ```

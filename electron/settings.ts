@@ -3,6 +3,8 @@ import type { QuickCopyModifier, ThemeMode } from '../src/types'
 
 /** 오버레이 토글용 기본 전역 단축키. */
 export const DEFAULT_SHORTCUT = 'CommandOrControl+Shift+V'
+const LEGACY_CAPTURE_SHORTCUT = 'CommandOrControl+Shift+X'
+export const DEFAULT_CAPTURE_SHORTCUT = 'CommandOrControl+Alt+Shift+X'
 export const DEFAULT_QUICK_COPY_MODIFIER: QuickCopyModifier = 'primary'
 export const DEFAULT_HIDE_ON_BLUR = true
 export const DEFAULT_LAUNCH_AT_LOGIN = false
@@ -23,6 +25,7 @@ const THEME_MODES: ThemeMode[] = ['light', 'dark', 'system']
 
 interface SettingsSchema {
   shortcut: string
+  captureShortcut: string
   quickCopyModifier: QuickCopyModifier
   hideOnBlur: boolean
   launchAtLogin: boolean
@@ -42,6 +45,7 @@ function getStore(): Store<SettingsSchema> {
     store = new Store<SettingsSchema>({
       defaults: {
         shortcut: DEFAULT_SHORTCUT,
+        captureShortcut: DEFAULT_CAPTURE_SHORTCUT,
         quickCopyModifier: DEFAULT_QUICK_COPY_MODIFIER,
         hideOnBlur: DEFAULT_HIDE_ON_BLUR,
         launchAtLogin: DEFAULT_LAUNCH_AT_LOGIN,
@@ -52,6 +56,10 @@ function getStore(): Store<SettingsSchema> {
         mainWindowHeight: DEFAULT_MAIN_WINDOW_HEIGHT,
       },
     })
+    // 초기 캡처 단축키가 웨일 브라우저 등과 충돌할 수 있어 새 기본값으로 한 번 이동한다.
+    if (store.get('captureShortcut') === LEGACY_CAPTURE_SHORTCUT) {
+      store.set('captureShortcut', DEFAULT_CAPTURE_SHORTCUT)
+    }
   }
   return store
 }
@@ -62,6 +70,14 @@ export function getShortcut(): string {
 
 export function setStoredShortcut(shortcut: string): void {
   getStore().set('shortcut', shortcut)
+}
+
+export function getCaptureShortcut(): string {
+  return getStore().get('captureShortcut')
+}
+
+export function setStoredCaptureShortcut(shortcut: string): void {
+  getStore().set('captureShortcut', shortcut)
 }
 
 export function getQuickCopyModifier(): QuickCopyModifier {

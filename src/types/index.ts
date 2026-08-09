@@ -45,6 +45,9 @@ export interface SettingsData {
   /** 전역 토글 단축키 (Electron accelerator 문자열). */
   shortcut: string
   defaultShortcut: string
+  /** 화면 캡처를 시작하는 전역 단축키. */
+  captureShortcut: string
+  defaultCaptureShortcut: string
   quickCopyModifier: QuickCopyModifier
   defaultQuickCopyModifier: QuickCopyModifier
   /** 포커스를 잃었을 때 오버레이를 자동으로 숨길지 여부. */
@@ -67,6 +70,26 @@ export interface SettingsData {
 export interface SetShortcutResult {
   ok: boolean
   error?: string
+}
+
+export interface CaptureRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export interface CaptureDisplayData {
+  displayId: string
+  width: number
+  height: number
+  screenshot: string
+}
+
+export interface CapturePreviewData {
+  dataUrl: string
+  width: number
+  height: number
 }
 
 // preload 가 실제로 노출하는 객체에서 타입을 파생시킨다(`typeof clipboardAPI`).
