@@ -8,10 +8,10 @@ import {
 } from './shared'
 import { getOverlayWindow } from './overlay'
 
-const WIDTH = 460
-const HEIGHT = 720
-const MIN_WIDTH = 380
-const MIN_HEIGHT = 480
+const WIDTH = 620
+const HEIGHT = 880
+const MIN_WIDTH = 480
+const MIN_HEIGHT = 560
 
 let win: BrowserWindow | null = null
 

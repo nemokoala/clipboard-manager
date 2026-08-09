@@ -331,14 +331,16 @@ export default function CaptureOverlay() {
             className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible"
             aria-hidden="true"
           >
+            {/* 1px 파란 선 + 바깥에 1px 흰 선. 흰 선이 없으면 파란 배경 위에서
+                테두리가 사라진다. 두 선이 겹치지 않게 경로를 1px 어긋나게 둔다. */}
             <rect
-              x={selection.x + 1.5}
-              y={selection.y + 1.5}
-              width={Math.max(0, selection.width - 3)}
-              height={Math.max(0, selection.height - 3)}
+              x={selection.x + 0.5}
+              y={selection.y + 0.5}
+              width={Math.max(0, selection.width - 1)}
+              height={Math.max(0, selection.height - 1)}
               fill="rgba(49, 130, 246, 0.08)"
-              stroke="rgba(255, 255, 255, 0.98)"
-              strokeWidth="3"
+              stroke="rgba(255, 255, 255, 0.9)"
+              strokeWidth="1"
             />
             <rect
               x={selection.x + 1.5}
@@ -347,7 +349,7 @@ export default function CaptureOverlay() {
               height={Math.max(0, selection.height - 3)}
               fill="none"
               stroke="#3182F6"
-              strokeWidth="1.5"
+              strokeWidth="1"
             />
           </svg>
           <div

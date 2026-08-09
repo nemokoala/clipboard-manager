@@ -189,13 +189,15 @@ export default function Settings() {
   }
 
   return (
-    <div className="flex h-full flex-col bg-white p-6 text-gray-900 dark:bg-ink dark:text-gray-100">
-      <h1 className="text-lg font-bold">설정</h1>
-      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+    // 가로 여백은 각 줄이 직접 갖는다. 스크롤 영역이 창 끝까지 닿아야
+    // 스크롤바가 여백 안쪽에 갇히지 않는다.
+    <div className="flex h-full flex-col bg-white py-6 text-gray-900 dark:bg-ink dark:text-gray-100">
+      <h1 className="px-6 text-lg font-bold">설정</h1>
+      <p className="mt-1 px-6 text-xs text-gray-500 dark:text-gray-400">
         오버레이 열기와 빠른 복사 단축키를 변경합니다.
       </p>
 
-      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+      <div className="min-h-0 flex-1 overflow-y-auto px-6">
         <Field
           label="테마"
           hint="시스템을 선택하면 운영체제의 라이트/다크 설정을 따릅니다."
@@ -315,12 +317,12 @@ export default function Settings() {
       </div>
 
       {error && (
-        <div className="mt-4 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-300">
+        <div className="mx-6 mt-4 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-300">
           {error}
         </div>
       )}
 
-      <div className="flex shrink-0 items-center justify-between pt-4">
+      <div className="flex shrink-0 items-center justify-between px-6 pt-4">
         <button
           type="button"
           onClick={handleReset}
