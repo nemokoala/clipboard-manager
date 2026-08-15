@@ -56,6 +56,7 @@ electron/   메인 프로세스 (CommonJS 로 빌드)
   backfill.ts   기존 이미지의 썸네일을 배치로 채우는 백그라운드 작업
   settings.ts   electron-store 기반 설정 저장
   shortcuts.ts  전역 단축키 등록 / 해제 / 복원
+  display-modes.ts 모니터의 실제 픽셀 해상도 조회 (Windows FFI)
   theme.ts      다크 여부 판정 + 창 배경색
   broadcast.ts  모든 창에 이벤트 전파 (refresh / theme)
   purge.ts      보관 정책 실행
@@ -143,11 +144,24 @@ src/        렌더러 (React)
   로 **활성화 대상에서 뺀다**. 마우스 입력은 그대로 들어오고, Esc/Enter 는 캡처가 떠 있는
   동안만 메인이 전역 단축키로 잡아 처리한다(닫을 때 반드시 해제 — 안 하면 Esc 가 시스템
   전역에서 먹힌 채로 남는다).
-  - 스크린샷은 **렌더러에 원본을 보내지 않는다**. `desktopCapturer` 의 `thumbnailSize` 는
-    모든 소스에 공통이라 작은 모니터 화면까지 가장 큰 모니터 크기로 확대해 돌려준다.
-    물리 해상도로 되돌린 뒤(`trimToPhysicalSize`), 렌더러에는 DIP 크기 JPEG 만 보낸다
-    (`encodePreview`). 4K PNG data URL 은 모니터당 1.3~3.5MB · 인코딩 264~412ms 라
-    창이 여러 개면 메인이 눈에 띄게 멎는다. 실제 잘라내기는 메인의 원본으로 한다.
+  - **캡처 화질: `thumbnailSize` 는 반드시 모니터의 진짜 픽셀 해상도여야 한다.**
+    `bounds × scaleFactor` 로 계산하면 안 된다 — `bounds` 가 이미 반올림된 DIP 라
+    175% 배율에서 3840 이 3841 로 되돌아온다. 그 1px 때문에 `desktopCapturer` 가
+    화면 전체를 3841 로 확대하고 다시 3840 으로 줄이는 이중 리샘플이 일어나,
+    화면 한가운데서 반 픽셀씩 어긋나며 글자가 뭉갠다(실측 선명도 1/8~1/3).
+    `display-modes.ts` 가 `EnumDisplayDevicesW` + `EnumDisplaySettingsW` 로 실제
+    해상도와 물리 좌표를 읽고, `screen.dipToScreenPoint(bounds 원점)` 으로 짝짓는다.
+    FFI 가 없으면 계산값으로 폴백한다. `thumbnailSize` 는 모든 소스에 공통이므로
+    해상도가 같은 모니터끼리 묶어 묶음마다 한 번씩 `getSources` 를 부른다(보통 1회).
+  - 스크린샷은 **렌더러에 원본을 보내지 않는다**. 렌더러에는 물리 해상도 JPEG 만
+    보낸다(`encodePreview`). 4K PNG data URL 은 모니터당 1.3~3.5MB · 인코딩
+    264~412ms 라 창이 여러 개면 메인이 눈에 띄게 멎는다. 같은 4K JPEG 는 ~1MB ·
+    34~39ms 다. 실제 잘라내기는 메인의 원본으로 한다.
+  - **배경을 창 크기에 맞춰 늘리지 말 것**(`backgroundSize: 100% 100%`). 창 크기는
+    DIP 반올림 때문에 이미지보다 1~3px 커서, 늘리면 화면 전체가 미세하게 확대되며
+    또 흐려진다. `imageWidth / devicePixelRatio` CSS 크기로 깔아 이미지 1픽셀을
+    화면 1픽셀에 얹는다. 같은 이유로 잘라내기 좌표 환산도 `bounds` 비율이 아니라
+    `scaleFactor` 를 쓴다.
   - 상태 전달은 **렌더러가 가져가는(pull) 쪽**이 정답이다. 메인이 `did-finish-load` 에
     `capture:ready` 를 push 하면 React 가 리스너를 등록하기 전에 도착할 수 있고, 그
     모니터만 검은 화면으로 남는다. 창 여러 개가 동시에 로드되면 훨씬 잦다. 렌더러는
