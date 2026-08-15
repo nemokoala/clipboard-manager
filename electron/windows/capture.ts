@@ -237,18 +237,27 @@ function buildDisplayData(
 }
 
 /**
- * 렌더러에는 CSS 픽셀 크기의 JPEG 만 보낸다.
- * 4K PNG 를 data URL 로 만들면 한 장이 수 MB 라, 모니터마다 인코딩·IPC 전송·디코딩을
- * 하는 사이 메인이 멎고 렌더러가 메모리로 죽는다(모니터 하나만 뜨거나 검은 화면).
- * 오버레이는 어차피 창 크기에 맞춰 그리므로 DIP 크기면 1:1 로 충분하고,
- * 실제 잘라내기는 메인이 들고 있는 원본 해상도 이미지로 한다.
+ * 렌더러에는 물리 해상도 JPEG 를 보낸다.
+ * PNG 는 4K 한 장이 1.3~3.5MB · 인코딩 264~412ms 라 모니터마다 만들면 메인이 멎는다.
+ * JPEG 는 같은 4K 가 ~1MB · 33~43ms 로 끝나므로 크기를 줄일 이유가 없다.
+ *
+ * ⚠️ 여기서 DIP 크기로 줄이면 안 된다. 오버레이 창은 devicePixelRatio(=scaleFactor)
+ * 만큼 물리 픽셀로 그려지므로, DIP 로 줄인 이미지는 렌더러가 다시 1.5~1.75배 확대해
+ * 배경이 눈에 띄게 흐려진다(돋보기는 zoom 2 가 겹쳐 3배 이상 확대). 물리 크기로 보내면
+ * CSS 상 1:1 로 맞아 선명하다. 실제 잘라내기는 메인의 원본으로 하는 건 그대로다.
  */
 function encodePreview(image: NativeImage, display: Display): string {
-  const preview = image.resize({
-    width: display.bounds.width,
-    height: display.bounds.height,
-    quality: 'good',
-  })
+  const physicalWidth = Math.round(display.bounds.width * display.scaleFactor)
+  const size = image.getSize()
+  // 캡처 원본이 이미 물리 해상도이므로 보통은 리사이즈 없이 그대로 인코딩된다.
+  const preview =
+    size.width > physicalWidth
+      ? image.resize({
+          width: physicalWidth,
+          height: Math.round(display.bounds.height * display.scaleFactor),
+          quality: 'good',
+        })
+      : image
   return `data:image/jpeg;base64,${preview.toJPEG(88).toString('base64')}`
 }
 
