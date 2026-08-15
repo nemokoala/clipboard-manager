@@ -81,9 +81,17 @@ export interface CaptureRect {
 
 export interface CaptureDisplayData {
   displayId: string
+  /** 선택 좌표계로 쓰는 CSS(DIP) 크기. */
   width: number
   height: number
   screenshot: string
+  /**
+   * `screenshot` 의 실제 픽셀 크기.
+   * 렌더러는 이걸 `devicePixelRatio` 로 나눈 CSS 크기로 배경을 깔아야
+   * 이미지 1픽셀이 화면 1픽셀에 정확히 얹혀 선명하게 보인다.
+   */
+  imageWidth: number
+  imageHeight: number
 }
 
 export interface CapturePreviewData {

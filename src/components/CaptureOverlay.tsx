@@ -296,6 +296,12 @@ export default function CaptureOverlay() {
 
   if (!display) return <div className="h-full bg-black" />
 
+  // 스크린샷을 창 크기에 맞춰 늘리면(=100% 100%) 창 크기가 DIP 반올림 때문에
+  // 이미지보다 1~3px 커서 화면 전체가 살짝 확대되며 흐려진다. 이미지 픽셀을
+  // devicePixelRatio 로 나눈 CSS 크기로 깔아 1:1 로 고정한다.
+  const backgroundWidth = display.imageWidth / devicePixelRatio
+  const backgroundHeight = display.imageHeight / devicePixelRatio
+
   const labelTop = selection.y > 46
   const activelyAdjusting = dragStart !== null || adjustment !== null
   const sizeLeft = Math.max(8, selection.x)
@@ -305,10 +311,12 @@ export default function CaptureOverlay() {
 
   return (
     <main
-      className="capture-canvas relative h-full w-full cursor-crosshair overflow-hidden bg-cover bg-center"
+      className="capture-canvas relative h-full w-full cursor-crosshair overflow-hidden bg-black"
       style={{
         backgroundImage: `url(${display.screenshot})`,
-        backgroundSize: '100% 100%',
+        backgroundSize: `${backgroundWidth}px ${backgroundHeight}px`,
+        backgroundPosition: '0 0',
+        backgroundRepeat: 'no-repeat',
       }}
       onPointerMove={handlePointerMove}
       onPointerDown={handlePointerDown}
@@ -464,8 +472,9 @@ function CaptureMagnifier({
         draggable={false}
         className="absolute select-none"
         style={{
-          width: display.width * zoom,
-          height: display.height * zoom,
+          // 배경과 같은 기준(이미지 픽셀 ÷ DPR)으로 확대해야 배율이 어긋나지 않는다.
+          width: (display.imageWidth / devicePixelRatio) * zoom,
+          height: (display.imageHeight / devicePixelRatio) * zoom,
           maxWidth: 'none',
           left: size / 2 - pointer.x * zoom,
           top: size / 2 - pointer.y * zoom,

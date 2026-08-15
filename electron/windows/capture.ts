@@ -12,6 +12,7 @@ import {
 } from 'electron'
 import { writeFile } from 'node:fs/promises'
 import type { CaptureDisplayData, CaptureRect } from '../../src/types'
+import { getNativeDisplayModes } from '../display-modes'
 import { getVisibleWindowRects, type NativeWindowRect } from '../window-bounds'
 import {
   WEB_PREFERENCES,
@@ -50,34 +51,45 @@ export async function startCapture(): Promise<void> {
     // 오버레이가 Z-order를 가리기 전에 자동 선택 후보를 고정한다.
     windowRects = getVisibleWindowRects()
     const displays = screen.getAllDisplays()
-    const maxWidth = Math.max(
-      ...displays.map((display) =>
-        Math.round(display.bounds.width * display.scaleFactor),
-      ),
-    )
-    const maxHeight = Math.max(
-      ...displays.map((display) =>
-        Math.round(display.bounds.height * display.scaleFactor),
-      ),
-    )
-    const sources = await desktopCapturer.getSources({
-      types: ['screen'],
-      thumbnailSize: { width: maxWidth, height: maxHeight },
-    })
+    const nativeSizes = resolveNativeSizes(displays)
 
-    const sourceByDisplay = matchSourcesToDisplays(displays, sources)
+    // thumbnailSize 는 모든 소스에 공통이라, 해상도가 같은 모니터끼리 묶어
+    // 각 묶음을 그 해상도로 한 번씩 캡처한다. 보통 모니터 해상도는 같으므로
+    // 호출은 한 번으로 끝난다.
+    const groups = new Map<string, Display[]>()
     for (const display of displays) {
-      const source = sourceByDisplay.get(String(display.id))
-      if (!source || source.thumbnail.isEmpty()) continue
+      const size = nativeSizes.get(String(display.id))
+      if (!size) continue
+      const key = `${size.width}x${size.height}`
+      const group = groups.get(key)
+      if (group) group.push(display)
+      else groups.set(key, [display])
+    }
 
-      const displayId = String(display.id)
-      const image = trimToPhysicalSize(source.thumbnail, display)
-      captures.set(displayId, { display, image })
-      showCaptureWindow(displayId, display, image)
+    let sourceCount = 0
+    for (const group of groups.values()) {
+      const size = nativeSizes.get(String(group[0].id))
+      if (!size) continue
+      const sources = await desktopCapturer.getSources({
+        types: ['screen'],
+        thumbnailSize: { width: size.width, height: size.height },
+      })
+      sourceCount += sources.length
+
+      const sourceByDisplay = matchSourcesToDisplays(group, sources)
+      for (const display of group) {
+        const source = sourceByDisplay.get(String(display.id))
+        if (!source || source.thumbnail.isEmpty()) continue
+
+        const displayId = String(display.id)
+        const image = trimToNativeSize(source.thumbnail, size)
+        captures.set(displayId, { display, image })
+        showCaptureWindow(displayId, display, image)
+      }
     }
 
     console.info(
-      `[capture] 캡처 시작: 디스플레이 ${displays.length}개 / 소스 ${sources.length}개 / 오버레이 ${captures.size}개`,
+      `[capture] 캡처 시작: 디스플레이 ${displays.length}개 / 해상도 ${[...groups.keys()].join(', ')} / 소스 ${sourceCount}개 / 오버레이 ${captures.size}개`,
     )
 
     if (captures.size === 0) {
@@ -207,17 +219,58 @@ function sendCaptureToWindow(
   win.showInactive()
 }
 
+interface DisplaySize {
+  width: number
+  height: number
+}
+
 /**
- * `getSources` 의 thumbnailSize 는 모든 소스에 공통으로 적용돼, 가장 큰 모니터에
- * 맞춘 상자 크기로 작은 모니터의 화면까지 확대해서 돌려준다(1920×1080 → 3841×2161).
- * 확대분은 화질에 보탬이 없고 메모리만 4배로 먹으므로 실제 물리 해상도로 되돌린다.
+ * 모니터별 진짜 픽셀 해상도를 구한다.
+ *
+ * ⚠️ `bounds × scaleFactor` 로 계산하면 안 된다. `bounds` 는 이미 반올림된 DIP 라
+ * 175% 배율에서 3840 이 3841 로 되돌아온다. 그 1px 차이로 `desktopCapturer` 가
+ * 화면 전체를 3841 로 확대했다가 다시 3840 으로 줄이게 되고, 두 번의 리샘플이
+ * 화면 한가운데서 반 픽셀씩 어긋나며 글자를 뭉갠다(실측 선명도 1/8 로 하락).
+ * 그래서 OS 에 실제 디스플레이 모드를 물어보고, 그게 없을 때만 계산값을 쓴다.
  */
-function trimToPhysicalSize(image: NativeImage, display: Display): NativeImage {
-  const width = Math.round(display.bounds.width * display.scaleFactor)
-  const height = Math.round(display.bounds.height * display.scaleFactor)
-  const size = image.getSize()
-  if (size.width <= width || size.height <= height) return image
-  return image.resize({ width, height, quality: 'good' })
+function resolveNativeSizes(displays: Display[]): Map<string, DisplaySize> {
+  const modes = getNativeDisplayModes()
+  const sizes = new Map<string, DisplaySize>()
+
+  for (const display of displays) {
+    const fallback = {
+      width: Math.round(display.bounds.width * display.scaleFactor),
+      height: Math.round(display.bounds.height * display.scaleFactor),
+    }
+    const origin =
+      process.platform === 'win32'
+        ? screen.dipToScreenPoint({ x: display.bounds.x, y: display.bounds.y })
+        : { x: display.bounds.x, y: display.bounds.y }
+    // 물리 원점이 일치하는 모드를 찾는다. 좌표도 반올림될 수 있어 약간의 오차를 허용한다.
+    const match = modes.find(
+      (mode) => Math.abs(mode.x - origin.x) <= 2 && Math.abs(mode.y - origin.y) <= 2,
+    )
+    // 짝이 잘못 맞으면 엉뚱한 크기로 캡처하게 되므로 계산값과 크게 어긋나면 버린다.
+    const plausible =
+      match !== undefined &&
+      Math.abs(match.width - fallback.width) <= fallback.width * 0.05 &&
+      Math.abs(match.height - fallback.height) <= fallback.height * 0.05
+
+    sizes.set(String(display.id), plausible && match ? match : fallback)
+  }
+
+  return sizes
+}
+
+/**
+ * 요청한 크기와 다르게 돌아오는 드라이버를 위한 안전장치.
+ * 위에서 실제 해상도로 요청하므로 보통은 그대로 통과한다.
+ */
+function trimToNativeSize(image: NativeImage, size: DisplaySize): NativeImage {
+  const current = image.getSize()
+  if (current.width === size.width && current.height === size.height) return image
+  if (current.width < size.width || current.height < size.height) return image
+  return image.resize({ ...size, quality: 'good' })
 }
 
 function buildDisplayData(
@@ -226,30 +279,32 @@ function buildDisplayData(
   image: NativeImage,
 ): CaptureDisplayData {
   const capture = captures.get(displayId)
-  const screenshot = capture?.dataUrl ?? encodePreview(image, display)
+  const screenshot = capture?.dataUrl ?? encodePreview(image)
   if (capture) capture.dataUrl = screenshot
+  const size = image.getSize()
   return {
     displayId,
     width: display.bounds.width,
     height: display.bounds.height,
     screenshot,
+    // 렌더러가 이 크기를 devicePixelRatio 로 나눠 배경을 1:1 로 깔 수 있게 함께 보낸다.
+    imageWidth: size.width,
+    imageHeight: size.height,
   }
 }
 
 /**
- * 렌더러에는 CSS 픽셀 크기의 JPEG 만 보낸다.
- * 4K PNG 를 data URL 로 만들면 한 장이 수 MB 라, 모니터마다 인코딩·IPC 전송·디코딩을
- * 하는 사이 메인이 멎고 렌더러가 메모리로 죽는다(모니터 하나만 뜨거나 검은 화면).
- * 오버레이는 어차피 창 크기에 맞춰 그리므로 DIP 크기면 1:1 로 충분하고,
- * 실제 잘라내기는 메인이 들고 있는 원본 해상도 이미지로 한다.
+ * 렌더러에는 물리 해상도 JPEG 를 보낸다.
+ * PNG 는 4K 한 장이 1.3~3.5MB · 인코딩 264~412ms 라 모니터마다 만들면 메인이 멎는다.
+ * JPEG 는 같은 4K 가 ~1MB · 33~43ms 로 끝나므로 크기를 줄일 이유가 없다.
+ *
+ * ⚠️ 여기서 크기를 건드리면 안 된다. 오버레이 창은 devicePixelRatio(=scaleFactor)
+ * 만큼 물리 픽셀로 그려지므로, DIP 로 줄여 보내면 렌더러가 다시 1.5~1.75배 확대해
+ * 배경이 눈에 띄게 흐려진다(돋보기는 zoom 2 가 겹쳐 3배 이상 확대).
+ * 실제 잘라내기는 메인의 원본으로 하는 건 그대로다.
  */
-function encodePreview(image: NativeImage, display: Display): string {
-  const preview = image.resize({
-    width: display.bounds.width,
-    height: display.bounds.height,
-    quality: 'good',
-  })
-  return `data:image/jpeg;base64,${preview.toJPEG(88).toString('base64')}`
+function encodePreview(image: NativeImage): string {
+  return `data:image/jpeg;base64,${image.toJPEG(92).toString('base64')}`
 }
 
 /**
@@ -384,14 +439,18 @@ export function completeCapture(
   )
   if (safe.width < 2 || safe.height < 2) return
 
+  // 렌더러는 배경을 `이미지 픽셀 ÷ devicePixelRatio` 크기로 깔아 1:1 로 보여준다.
+  // 따라서 CSS 좌표 → 이미지 좌표 환산도 bounds 비율이 아니라 scaleFactor 여야
+  // 화면에서 고른 영역과 잘리는 영역이 정확히 일치한다.
   const imageSize = capture.image.getSize()
-  const scaleX = imageSize.width / capture.display.bounds.width
-  const scaleY = imageSize.height / capture.display.bounds.height
+  const scale = capture.display.scaleFactor
+  const x = Math.max(0, Math.min(imageSize.width - 1, Math.round(safe.x * scale)))
+  const y = Math.max(0, Math.min(imageSize.height - 1, Math.round(safe.y * scale)))
   const cropped = capture.image.crop({
-    x: Math.max(0, Math.round(safe.x * scaleX)),
-    y: Math.max(0, Math.round(safe.y * scaleY)),
-    width: Math.max(1, Math.round(safe.width * scaleX)),
-    height: Math.max(1, Math.round(safe.height * scaleY)),
+    x,
+    y,
+    width: Math.max(1, Math.min(imageSize.width - x, Math.round(safe.width * scale))),
+    height: Math.max(1, Math.min(imageSize.height - y, Math.round(safe.height * scale))),
   })
 
   closeCaptureWindows(quickCopy ? 'quick-copy' : 'complete')
