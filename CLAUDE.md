@@ -71,11 +71,11 @@ electron/   메인 프로세스 (CommonJS 로 빌드)
 src/        렌더러 (React)
   App.tsx           오버레이 메인 UI
   main.tsx          URL 해시로 오버레이/설정/토스트 분기 렌더링
-  components/       SearchBar / TabBar / StorageInfo / DateGroup /
+  components/       SearchBar / TabBar / StorageInfo / SelectionBar / DateGroup /
                     HistoryList / HistoryItem / Settings / Toast
     ui/             Toggle / SegmentedControl / OptionGrid (재사용 컨트롤)
   types/index.ts    공유 타입 (ClipboardAPI 는 preload 에서 typeof 로 파생)
-  utils/            accelerator / format / theme / platform
+  utils/            accelerator / format / theme / platform / image
 ```
 
 ## 아키텍처 메모
@@ -130,6 +130,37 @@ src/        렌더러 (React)
     원본 폭 그대로 남아 거의 줄지 않는다.
   - 썸네일 도입 전에 저장된 이미지는 `backfill.ts` 가 배치로 채운다. 한 번에 처리하면
     전부 디코딩하느라 앱 시작이 수 초간 멈춘다.
+- **목록 가상 스크롤**: `HistoryList` 는 `@tanstack/react-virtual` 로 화면 근처 행만 그린다.
+  날짜 헤더와 카드를 한 줄짜리 행 배열로 펼치고, 그룹 간격은 행의 아래 여백(카드 사이 6px ·
+  그룹 끝 8px)으로 재현한다. 전부 DOM 에 올리던 때보다 오버레이 렌더러가 끝까지 스크롤한 뒤
+  약 240MB → 70~115MB 로 준다(1317 항목 실측). 데이터는 여전히 `getAllItems()` 로 전부
+  받으므로 메인 프로세스 메모리는 그대로다.
+  - 라이브러리 기본 `measureElement` 는 높이를 `Math.round` 한다. 헤더·카드 높이가 11px
+    글자 × 줄높이 1.5 때문에 30.5px 처럼 끝나서, 반올림하면 행마다 0.5px 씩 벌어져 전체가
+    수백 px 길어진다. 소수 높이를 그대로 쓰는 측정 함수를 넘긴다.
+  - **이미지는 로드 전에 최종 크기의 자리를 잡아야 한다**(`utils/image.ts` 가 PNG 헤더에서
+    크기를 읽음). 디코딩 뒤 높이가 0 → 80px 로 바뀌면 위로 스크롤하는 중에는 라이브러리가 그
+    변화를 보정하지 않아 화면이 80px 씩 튄다.
+  - 라이브러리 기본값은 **위로 스크롤하는 중의 재측정을 보정하지 않는다**. 창 폭을 바꾸면
+    예전 폭에서 잰 높이가 남아 있다가 위로 스크롤할 때 다시 재지면서 화면이 수십~백여 px 씩
+    튄다. 그래서 `shouldAdjustScrollPositionOnItemSizeChange` 를 "시작점이 뷰포트 위인 행이면
+    항상 보정"으로 바꿨다. 카드가 그려진 뒤 스스로 커지는 일이 없어서 안전하다 — 나중에
+    스트리밍처럼 커지는 카드가 생기면 이 조건을 다시 볼 것.
+  - 카드에 `content-visibility: auto` 를 다시 넣지 말 것. 여유분으로 미리 그린 화면 밖 행이
+    `contain-intrinsic-size` 높이로 측정돼 위치가 어긋난다.
+  - **hover·선택으로 카드 크기가 바뀌면 안 된다**(커서 아래 행이 다시 측정됨). 카드 오른쪽 칸은
+    시간·번호와 hover 버튼을 grid 한 칸에 겹쳐 두고 `visibility` 만 바꾸며, 선택 표시는 border
+    가 아니라 `ring-inset` 과 배경으로 한다.
+- **다중 선택 삭제**: Ctrl(⌘)+클릭 토글, Shift+클릭 범위 추가(화면 순서 = 고정 항목 먼저),
+  날짜 헤더의 "이 날짜 선택"(고정됨 그룹 제외). 선택 중에는 저장소 현황 줄 대신
+  `SelectionBar` 가 나오고, 삭제는 `deleteItems`(한 트랜잭션)로 한다.
+  - 선택이 하나라도 있으면 **일반 클릭도 토글**이다. 고르다가 실수로 복사·창 닫힘이 나지 않게.
+  - 오버레이는 숨겨질 뿐 파기되지 않으므로 **숨겨질 때(`visibilitychange`) 선택을 비운다**.
+    안 그러면 다음에 열었을 때 첫 클릭이 복사가 아니라 토글이 된다. 검색어·탭 변경 때도 비운다.
+  - 지우는 대상은 "선택한 id 중 지금 화면에 있는 것"(`selectedVisible`)뿐이다. 목록이 다시
+    로드돼 사라진 id 는 자연히 빠진다.
+  - `window.confirm` 같은 네이티브 대화상자를 쓰지 말 것 — 오버레이가 포커스를 잃고 숨는다.
+    그래서 날짜 삭제도 "선택 → 삭제" 두 단계다.
 - **클립보드 변경 감지**: 폴링 tick 마다 이미지를 읽어 비교하면 클립보드에 큰
   이미지가 올라와 있는 것만으로 CPU 를 계속 쓴다. `clipboard-counter.ts` 가 OS 의
   클립보드 변경 카운터(Windows `GetClipboardSequenceNumber`, macOS
