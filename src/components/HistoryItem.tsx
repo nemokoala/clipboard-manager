@@ -1,5 +1,40 @@
 import type { ClipboardItem } from '../types'
 import { formatTime } from '../utils/format'
+import { pngDataUrlSize } from '../utils/image'
+
+/** 미리보기 이미지의 최대 높이(px). */
+const IMAGE_MAX_HEIGHT = 80
+/** 오른쪽 고정·삭제 버튼 자리(4rem)를 비워 둔 최대 너비. */
+const IMAGE_MAX_WIDTH = 'calc(100% - 4rem)'
+
+/**
+ * 이미지 미리보기의 className/style.
+ *
+ * 크기를 알 수 있으면(PNG 헤더) 로드 전부터 최종 크기의 자리를 잡는다. 그래야 가상 스크롤이
+ * 행을 처음 잴 때 이미 올바른 높이가 나온다. 이미지가 디코딩된 뒤 높이가 0 → 80px 로 바뀌면,
+ * 위로 스크롤하는 중에는 라이브러리가 그 변화를 보정하지 않아 화면이 그만큼 튄다.
+ *
+ * 너비 = min(원본 너비, 최대 너비, 최대 높이에 맞춘 너비), 높이는 aspect-ratio 로 따라간다.
+ * max-width / max-height 로 원본 크기를 줄이던 기존 방식과 결과 크기가 같다.
+ */
+function imageBoxProps(preview: string) {
+  const size = pngDataUrlSize(preview)
+  if (!size) {
+    // Tailwind 는 소스에서 클래스 문자열을 그대로 찾으므로 상수로 조합하지 않고 적는다.
+    return {
+      className:
+        'max-h-[80px] max-w-[calc(100%-4rem)] rounded-lg object-contain',
+    }
+  }
+  const fitHeightWidth = (IMAGE_MAX_HEIGHT * size.width) / size.height
+  return {
+    className: 'rounded-lg object-contain',
+    style: {
+      width: `min(${size.width}px, ${IMAGE_MAX_WIDTH}, ${fitHeightWidth}px)`,
+      aspectRatio: `${size.width} / ${size.height}`,
+    },
+  }
+}
 
 interface HistoryItemProps {
   item: ClipboardItem
@@ -31,10 +66,10 @@ export default function HistoryItem({
   return (
     <div
       onClick={() => onCopy(item)}
-      // content-visibility: auto — 화면 밖 항목은 레이아웃·페인트를 건너뛴다.
-      // contain-intrinsic-size 로 대략적인 높이를 알려 줘야 스크롤바가 튀지 않는다
-      // (auto = 한 번 그려진 뒤로는 실제 높이를 기억한다).
-      className="group relative cursor-pointer rounded-xl bg-gray-50 p-3 transition [contain-intrinsic-size:auto_96px] [content-visibility:auto] hover:bg-gray-100 dark:bg-white/5 dark:hover:bg-white/10"
+      // 화면 밖 카드는 가상 스크롤(HistoryList)이 아예 그리지 않는다.
+      // content-visibility: auto 를 다시 넣지 말 것 — 여유분으로 미리 그린 화면 밖 행이
+      // contain-intrinsic-size 높이로 측정돼 행 위치가 어긋난다.
+      className="group relative cursor-pointer rounded-xl bg-gray-50 p-3 transition hover:bg-gray-100 dark:bg-white/5 dark:hover:bg-white/10"
     >
       {/* 내용 미리보기 */}
       {item.type === 'image' ? (
@@ -43,7 +78,7 @@ export default function HistoryItem({
           alt="클립보드 이미지"
           loading="lazy"
           decoding="async"
-          className="max-h-[80px] max-w-[calc(100%-4rem)] rounded-lg object-contain"
+          {...imageBoxProps(item.preview)}
         />
       ) : item.type === 'link' ? (
         <div className="flex items-center gap-2 pr-16">
