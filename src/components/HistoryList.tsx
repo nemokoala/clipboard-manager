@@ -4,12 +4,18 @@ import type { ClipboardItem, QuickCopyModifier } from '../types'
 import { quickCopyBadge } from '../utils/accelerator'
 import { groupByDay } from '../utils/format'
 import DateGroupHeader from './DateGroup'
-import HistoryItem from './HistoryItem'
+import HistoryItem, { type ClickModifiers } from './HistoryItem'
 
 interface HistoryListProps {
   items: ClipboardItem[]
   quickCopyModifier: QuickCopyModifier
-  onCopy: (item: ClipboardItem) => void
+  /** 선택된 항목 id. 화면에 없는 id 가 섞여 있어도 무시된다. */
+  selectedIds: ReadonlySet<number>
+  /** 선택이 하나라도 있으면 날짜 헤더의 선택 버튼을 항상 보여준다. */
+  selectionActive: boolean
+  onItemClick: (item: ClipboardItem, modifiers: ClickModifiers) => void
+  /** 날짜 그룹의 항목을 모두 선택하거나(일부만 선택돼 있어도) 모두 해제한다. */
+  onToggleGroup: (items: ClipboardItem[]) => void
   onTogglePin: (item: ClipboardItem) => void
   onDelete: (id: number) => void
 }
@@ -20,7 +26,15 @@ interface HistoryListProps {
  * - `lastInGroup`: 그룹의 마지막 카드는 아래 여백이 그룹 간격(8px)이 된다.
  */
 type Row =
-  | { kind: 'header'; key: string; label: string }
+  | {
+      kind: 'header'
+      key: string
+      label: string
+      /** 그룹에 속한 항목. 날짜 단위 선택에 쓴다. */
+      items: ClipboardItem[]
+      /** "고정됨" 그룹은 묶음 선택을 주지 않는다. */
+      selectable: boolean
+    }
   | {
       kind: 'item'
       key: string
@@ -38,8 +52,19 @@ function buildRows(items: ClipboardItem[]): Row[] {
   const itemIndexes = new Map(items.map((item, index) => [item.id, index]))
   const rows: Row[] = []
 
-  const pushGroup = (key: string, label: string, group: ClipboardItem[]) => {
-    rows.push({ kind: 'header', key: `header:${key}`, label })
+  const pushGroup = (
+    key: string,
+    label: string,
+    group: ClipboardItem[],
+    selectable: boolean,
+  ) => {
+    rows.push({
+      kind: 'header',
+      key: `header:${key}`,
+      label,
+      items: group,
+      selectable,
+    })
     group.forEach((item, i) => {
       rows.push({
         kind: 'item',
@@ -53,9 +78,9 @@ function buildRows(items: ClipboardItem[]): Row[] {
 
   // 고정 항목은 날짜와 무관하게 상단 "고정됨" 그룹으로 모은다.
   const pinnedItems = items.filter((item) => item.pinned)
-  if (pinnedItems.length > 0) pushGroup('pinned', '고정됨', pinnedItems)
+  if (pinnedItems.length > 0) pushGroup('pinned', '고정됨', pinnedItems, false)
   for (const group of groupByDay(items.filter((item) => !item.pinned))) {
-    pushGroup(group.key, group.label, group.items)
+    pushGroup(group.key, group.label, group.items, true)
   }
   return rows
 }
@@ -65,18 +90,25 @@ function buildRows(items: ClipboardItem[]): Row[] {
  * 추정이 실제와 가까울수록 처음 스크롤바 길이가 덜 출렁인다.
  */
 function estimateRowSize(row: Row): number {
-  if (row.kind === 'header') return 30
+  if (row.kind === 'header') return 30.5
   const gap = row.lastInGroup ? GROUP_GAP : ITEM_GAP
-  // 카드 패딩(24) + 시간 줄(24) + 본문
-  if (row.item.type === 'image') return 24 + 24 + 80 + gap
-  if (row.item.type === 'link') return 24 + 24 + 20 + gap
-  return 24 + 24 + 40 + gap
+  // 카드 = 패딩(24) + 본문. 시간은 오른쪽 칸에 있어 줄을 차지하지 않는다.
+  if (row.item.type === 'image') return 24 + 80 + gap
+  if (row.item.type === 'link') return 24 + 20 + gap
+  // 텍스트는 최대 3줄(line-clamp-3). 줄바꿈 수와 길이(한 줄 ≈ 40자)로 어림한다.
+  const text = row.item.preview
+  const breaks = text.slice(0, 400).split('\n').length
+  const lines = Math.min(3, Math.max(breaks, Math.ceil(text.length / 40)))
+  return 24 + 20 * lines + gap
 }
 
 export default function HistoryList({
   items,
   quickCopyModifier,
-  onCopy,
+  selectedIds,
+  selectionActive,
+  onItemClick,
+  onToggleGroup,
   onTogglePin,
   onDelete,
 }: HistoryListProps) {
@@ -153,7 +185,20 @@ export default function HistoryList({
               style={{ transform: `translateY(${virtualRow.start}px)` }}
             >
               {row.kind === 'header' ? (
-                <DateGroupHeader label={row.label} />
+                <DateGroupHeader
+                  label={row.label}
+                  selection={
+                    row.selectable
+                      ? {
+                          allSelected: row.items.every((item) =>
+                            selectedIds.has(item.id),
+                          ),
+                          alwaysVisible: selectionActive,
+                          onToggle: () => onToggleGroup(row.items),
+                        }
+                      : undefined
+                  }
+                />
               ) : (
                 <div
                   className="px-3"
@@ -168,7 +213,8 @@ export default function HistoryList({
                         ? null
                         : quickCopyBadge(quickCopyModifier, row.index)
                     }
-                    onCopy={onCopy}
+                    selected={selectedIds.has(row.item.id)}
+                    onClick={onItemClick}
                     onTogglePin={onTogglePin}
                     onDelete={onDelete}
                   />

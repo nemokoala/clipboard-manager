@@ -150,6 +150,18 @@ export function deleteItem(id: number): void {
   db.prepare(`DELETE FROM clipboard_items WHERE id = ?`).run(id)
 }
 
+/**
+ * 여러 항목을 한 트랜잭션으로 삭제한다(다중 선택 삭제).
+ * `IN (?, ?, …)` 로 묶지 않고 단건 구문을 반복한다 — 선택이 수백 개여도 SQLite 의
+ * 바인딩 변수 개수 상한을 신경 쓸 필요가 없고, 트랜잭션이라 디스크 쓰기는 한 번이다.
+ */
+export function deleteItems(ids: number[]): void {
+  const stmt = db.prepare(`DELETE FROM clipboard_items WHERE id = ?`)
+  db.transaction((list: number[]) => {
+    for (const id of list) stmt.run(id)
+  })(ids)
+}
+
 /** 모든 항목 삭제. */
 export function deleteAll(): void {
   db.prepare(`DELETE FROM clipboard_items`).run()

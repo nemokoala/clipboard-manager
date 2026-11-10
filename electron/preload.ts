@@ -23,6 +23,10 @@ const clipboardAPI = {
   deleteItem: (id: number): Promise<void> =>
     ipcRenderer.invoke('db:delete', id),
 
+  /** 여러 항목을 한 번에 삭제한다(다중 선택 · 날짜 단위 삭제). */
+  deleteItems: (ids: number[]): Promise<void> =>
+    ipcRenderer.invoke('db:deleteMany', ids),
+
   deleteAll: (): Promise<void> => ipcRenderer.invoke('db:deleteAll'),
 
   getStorageStats: (): Promise<StorageStats> => ipcRenderer.invoke('db:stats'),

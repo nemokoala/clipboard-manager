@@ -5,6 +5,7 @@ import { writeToClipboard } from './clipboard'
 import {
   deleteAll,
   deleteItem,
+  deleteItems,
   getAllItems,
   getContentById,
   getStorageStats,
@@ -94,6 +95,11 @@ function registerDbHandlers(): void {
     setPinned(id, pinned),
   )
   ipcMain.handle('db:delete', (_e, id: number) => deleteItem(id))
+  ipcMain.handle('db:deleteMany', (_e, ids: unknown) => {
+    // 렌더러에서 온 값이므로 정수 id 배열만 받아들인다.
+    if (!Array.isArray(ids)) return
+    deleteItems(ids.filter((id): id is number => Number.isInteger(id)))
+  })
   ipcMain.handle('db:deleteAll', () => deleteAll())
   ipcMain.handle('db:stats', () => getStorageStats())
 }
