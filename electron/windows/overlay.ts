@@ -1,5 +1,6 @@
-import { BrowserWindow, app, screen } from 'electron'
+import { BrowserWindow, screen } from 'electron'
 import type { ClipboardItem } from '../../src/types'
+import { shouldStartHidden } from '../launch'
 import {
   MAX_MAIN_WINDOW_HEIGHT,
   MAX_MAIN_WINDOW_WIDTH,
@@ -66,7 +67,7 @@ export function createOverlayWindow({ isSettingsVisible }: OverlayDeps): void {
   // 첫 실행 시 오버레이를 한 번 띄워 앱이 실행 중임을 알린다. 단, 로그인 자동 실행으로
   // 켜진 경우엔 조용히 트레이에만 머문다. (`show: false` 는 페인트 전 흰 화면을 막는다.)
   win.once('ready-to-show', () => {
-    if (app.getLoginItemSettings().wasOpenedAtLogin) return
+    if (shouldStartHidden()) return
     showOverlay()
   })
 
